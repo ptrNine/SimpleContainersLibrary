@@ -2,106 +2,133 @@
 #define DECAYENGINE_CONTAINERS_BASE_HPP
 
 #include <iostream>
-
+#include <string>
 #include <fmt/format.h>
-extern "C" {
-#include <xxhash.h>
-}
 
-#include "../baseTypes.hpp"
-#include "../traits.hpp"
+#include "types.hpp"
+#include "traits.hpp"
 
-namespace ftl {
+namespace scl {
 
-    template<typename Iter, typename Function>
-    auto _iter_reduce(Iter first, Iter last, Function callback, ttr::return_type_of<Function> init)
-    -> ttr::return_type_of<Function>
-    {
-        static_assert(
-                ttr::args_count<Function> == 2 ||
-                ttr::args_count<Function> == 3,
-                "Callback has wrong number of arguments"
-        );
+    namespace details {
 
-        if constexpr (ttr::args_count<Function> == 2) {
-            for (; first != last; ++first)
-                init = callback(init, *first);
+        // Compile-time functions
+        template <typename T, typename F, SizeT size, SizeT pos, SizeT count>
+        static constexpr auto
+        _count_elements(F callback, const T& array) noexcept -> enable_if_t<size == pos, SizeT> {
+            return count;
         }
-        else if constexpr (ttr::args_count<Function> == 3) {
-            for (std::size_t i = 0; first != last; ++first)
-                init = callback(init, *first, i++);
+
+        template <typename T, typename F, SizeT size, SizeT pos = 0, SizeT count = 0>
+        static constexpr auto
+        _count_elements(F callback, const T& array) noexcept -> typename std::enable_if_t<size != pos, SizeT> {
+            return callback(std::get<pos>(array)) ?
+                   _count_elements<T, F, size, pos + 1, count + 1>(callback, array) :
+                   _count_elements<T, F, size, pos + 1, count>(callback, array);
         }
-        return init;
-    }
 
-    template<typename Iter, typename Function>
-    auto _iter_reduce(Iter first, Iter last, Function callback)
-    -> ttr::enable_for<
-            (ttr::numbers<decltype(*first)> &&
-            ttr::numbers<ttr::return_type_of<Function>>) ||
-            ttr::same_types<decltype(*first), ttr::return_type_of<Function>>,
-    ttr::return_type_of<Function>>
-    {
-        static_assert(
-                ttr::args_count<Function> == 2 ||
-                ttr::args_count<Function> == 3,
-                "Callback has wrong number of arguments"
-        );
+        // Reduce with initial value
+        template<typename I, typename F, typename RetT = return_type_of_t<F>>
+        static auto _iter_reduce(I first, I last, F callback, const RetT& init) -> RetT
+        {
+            static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
+                          "Callback has wrong number of arguments");
 
-        ttr::return_type_of<Function> init = *first++;
+            if constexpr (args_count_v<F> == 2) {
+                for (; first != last; ++first)
+                    init = callback(init, *first);
+            }
+            else if constexpr (args_count_v<F> == 3) {
+                for (SizeT i = 0; first != last; ++first)
+                    init = callback(init, *first, i++);
+            }
 
-        if constexpr (ttr::args_count<Function> == 2) {
-            for (; first != last; ++first)
-                init = callback(init, *first);
+            return init;
         }
-        else if constexpr (ttr::args_count<Function> == 3) {
-            for (std::size_t i = 1; first != last; ++first)
-                init = callback(init, *first, i++);
-        }
-        return init;
-    }
 
-    template<typename Iter, typename Function>
-    auto _iter_reduce(Iter first, Iter last, Function callback)
-    -> ttr::enable_for<
-            (!ttr::numbers<ttr::return_type_of<Function>> &&
-            !ttr::same_types<decltype(*first), ttr::return_type_of<Function>>) ||
-            (!ttr::numbers<decltype(*first)> &&
-            std::is_default_constructible_v<ttr::return_type_of<Function>>),
-    ttr::return_type_of<Function>>
-    {
-        static_assert(
-                ttr::args_count<Function> == 2 ||
-                ttr::args_count<Function> == 3,
-                "Callback has wrong number of arguments"
-        );
+        template <typename Type, typename ReturnType>
+        constexpr bool is_number_or_same_types_t =
+                (is_number_v<decay_t<Type>> && is_number_v<decay_t<ReturnType>>) ||
+                 is_same_v<decay_t<Type>, decay_t<ReturnType>>;
 
-        auto init = ttr::return_type_of<Function>();
+        // Reduce without initial value.
+        // This implementation works if type of element and return type of callback are numbers or if they are same
+        template<typename I, typename F, typename RetT = return_type_of_t<F>>
+        static auto _iter_reduce(I first, I last, F callback)
+        -> enable_if_t<is_number_or_same_types_t<decltype(*first), RetT>, RetT>
+        {
+            static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
+                          "Callback has wrong number of arguments");
 
-        if constexpr (ttr::args_count<Function> == 2) {
-            for (; first != last; ++first)
-                init = callback(init, *first);
-        }
-        else if constexpr (ttr::args_count<Function> == 3) {
-            for (std::size_t i = 0; first != last; ++first)
-                init = callback(init, *first, i++);
-        }
-        return init;
-    }
+            RetT init = *first++;
 
-    template <typename CIterT>
-    void _iter_print(CIterT cbegin, CIterT cend, SizeT size, std::ostream& os = std::cout) {
-        switch (size) {
-            case 0: os << "{}"; return;
-            case 1: os << "{ " << *cbegin << " }"; return;
-            default:
-                os << "{ " << *cbegin++;
-                for (; cbegin != cend; ++cbegin)
-                    os << ", " << *cbegin;
-                os << " }";
+            if constexpr (args_count_v<F> == 2) {
+                for (; first != last; ++first)
+                    init = callback(init, *first);
+            }
+            else if constexpr (args_count_v<F> == 3) {
+                for (SizeT i = 1; first != last; ++first)
+                    init = callback(init, *first, i++);
+            }
+
+            return init;
         }
-    }
-}
+
+        // Reduce without initial value.
+        // Inverted condition
+        template<typename I, typename F, typename RetT = return_type_of_t<F>>
+        static auto _iter_reduce(I first, I last, F callback)
+        -> enable_if_t<!is_number_or_same_types_t<decltype(*first), RetT>, RetT>
+        {
+            static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
+                          "Callback has wrong number of arguments");
+
+            auto init = return_type_of_t<F>();
+
+            if constexpr (args_count_v<F> == 2) {
+                for (; first != last; ++first)
+                    init = callback(init, *first);
+            }
+            else if constexpr (args_count_v<F> == 3) {
+                for (SizeT i = 0; first != last; ++first)
+                    init = callback(init, *first, i++);
+            }
+
+            return init;
+        }
+
+        template <typename CIterT>
+        static void _iter_print(CIterT cbegin, CIterT cend, SizeT size, std::ostream& os = std::cout) {
+            switch (size) {
+                case 0: os << "{}"; return;
+                case 1: os << "{ " << *cbegin << " }"; return;
+                default:
+                    os << "{ " << *cbegin++;
+                    for (; cbegin != cend; ++cbegin)
+                        os << ", " << *cbegin;
+                    os << " }";
+            }
+        }
+
+        template <typename CIterT>
+        static std::string _iter_to_string(CIterT cbegin, CIterT cend, SizeT size) {
+            std::string str;
+
+            switch (size) {
+                case 0: return "{}";
+                case 1: return std::string("{ ") + fmt::to_string(*cbegin) + " }";
+                default:
+                    str += std::string("{ ") += fmt::to_string(*cbegin++);
+                    for (; cbegin != cend; ++cbegin)
+                        str += std::string(", ") += fmt::to_string(*cbegin);
+                    str += " }";
+                    return str;
+            }
+        }
+
+    } // namespace details
+
+} // namespace scl
 
 
 

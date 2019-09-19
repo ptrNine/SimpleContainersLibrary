@@ -1,0 +1,5 @@
+if(NOT SCL_USE_FILE_INCLUDED)
+    set(SCL_USE_FILE_INCLUDED 1)
+    include_directories(${SCL_INCLUDE_INSTALL_DIR})
+    link_directories(${SCL_LIB_INSTALL_DIR})
+endif()
