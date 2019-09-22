@@ -20,8 +20,8 @@ git_submodule_build(utfcpp CMAKE_ARGS -DUTF8_SAMPLES=OFF -DUTF8_TESTS=OFF)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/fakeroot)
 
-find_package(fmt)
-find_package(utf8cpp)
+find_package(fmt REQUIRED)
+find_package(utf8cpp REQUIRED)
 
 set(SclIncludes
         scl/array.hpp
@@ -67,9 +67,7 @@ install(
 )
 
 if(SCL_BUILD_TESTS)
-    git_submodule_build(googletest)
-    set (GTEST_ROOT ${PROJECT_SOURCE_DIR}/remote/googletest)
-    find_package(GTest REQUIRED)
+    git_submodule_build(Catch2 CMAKE_ARGS -DCATCH_INSTALL_DOCS=OFF -DCATCH_BUILD_TESTING=OFF)
     enable_testing()
     add_subdirectory(tests)
 endif()

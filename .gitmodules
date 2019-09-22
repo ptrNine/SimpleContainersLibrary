@@ -4,3 +4,6 @@
 [submodule "remote/utfcpp"]
 	path = remote/utfcpp
 	url = https://github.com/nemtrif/utfcpp
+[submodule "remote/Catch2"]
+	path = remote/Catch2
+	url = https://github.com/catchorg/Catch2
