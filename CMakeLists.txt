@@ -8,13 +8,20 @@ if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+include_directories(${PROJECT_BINARY_DIR}/fakeroot/include)
+link_directories(${PROJECT_BINARY_DIR}/fakeroot/lib)
+
 include(CMake/git_submodule_build.cmake)
 include(CMake/git_submodule_update.cmake)
 
 git_submodule_update()
-git_submodule_build(googletest)
-git_submodule_build(fmt CMAKE_ARGS "-DFMT_TEST=OFF -DFMT_DOC=OFF -DFMT_INSTALL=ON")
-git_submodule_build(utfcpp CMAKE_ARGS "-DUTF8_SAMPLES -DUTF8_TESTS")
+git_submodule_build(fmt CMAKE_ARGS -DFMT_TEST=OFF -DFMT_DOC=OFF -DFMT_INSTALL=ON)
+git_submodule_build(utfcpp CMAKE_ARGS -DUTF8_SAMPLES=OFF -DUTF8_TESTS=OFF)
+
+set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/fakeroot)
+
+find_package(fmt)
+find_package(utf8cpp)
 
 set(SclIncludes
         scl/array.hpp
@@ -60,6 +67,9 @@ install(
 )
 
 if(SCL_BUILD_TESTS)
+    git_submodule_build(googletest)
+    set (GTEST_ROOT ${PROJECT_SOURCE_DIR}/remote/googletest)
+    find_package(GTest REQUIRED)
     enable_testing()
     add_subdirectory(tests)
 endif()

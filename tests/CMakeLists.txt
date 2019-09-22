@@ -8,8 +8,9 @@ add_executable(
 
 target_link_libraries(
         tests
+        gtest
         gtest_main
         fmt
 )
 
-#add_test(NAME tests COMMAND tests)
+add_test(NAME tests COMMAND tests)

@@ -416,6 +416,4 @@ TEST(StringTests, UtfConversions) {
     auto utf8str  = scl::String  ( "Это строка");
     auto utf16str = scl::String16(u"Это строка");
     auto utf32str = scl::String32(U"Это строка");
-
-    std::cerr << utf32str.to_utf16().to_utf8() << std::endl;
 }
