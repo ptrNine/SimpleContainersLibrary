@@ -28,22 +28,24 @@ namespace scl {
         }
 
         // Reduce with initial value
-        template<typename I, typename F, typename RetT = return_type_of_t<F>>
-        static auto _iter_reduce(I first, I last, F callback, const RetT& init) -> RetT
+        template<typename I, typename F, typename InitT, typename RetT = return_type_of_t<F>>
+        static auto _iter_reduce(I first, I last, F callback, const InitT& init) -> RetT
         {
             static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
                           "Callback has wrong number of arguments");
 
+            RetT res = init;
+
             if constexpr (args_count_v<F> == 2) {
                 for (; first != last; ++first)
-                    init = callback(init, *first);
+                    res = callback(res, *first);
             }
             else if constexpr (args_count_v<F> == 3) {
                 for (SizeT i = 0; first != last; ++first)
-                    init = callback(init, *first, i++);
+                    res = callback(res, *first, i++);
             }
 
-            return init;
+            return res;
         }
 
         template <typename Type, typename ReturnType>
@@ -59,19 +61,39 @@ namespace scl {
         {
             static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
                           "Callback has wrong number of arguments");
+            static_assert(args_count_v<F> != 3 || !is_number_v<RetT>,
+                          "Reduce with indices in number-vector should have default value");
 
-            RetT init = *first++;
+            if (first == last)
+                return {};
 
-            if constexpr (args_count_v<F> == 2) {
-                for (; first != last; ++first)
-                    init = callback(init, *first);
+            if constexpr (is_number_v<RetT>) {
+                RetT init = *first++;
+
+                if constexpr (args_count_v<F> == 2) {
+                    for (; first != last; ++first)
+                        init = callback(init, *first);
+                } else if constexpr (args_count_v<F> == 3) {
+                    for (SizeT i = 1; first != last; ++first)
+                        init = callback(init, *first, i++);
+                }
+
+                return init;
             }
-            else if constexpr (args_count_v<F> == 3) {
-                for (SizeT i = 1; first != last; ++first)
-                    init = callback(init, *first, i++);
-            }
+            else {
+                RetT init = {};
 
-            return init;
+                if constexpr (args_count_v<F> == 2) {
+                    for (; first != last; ++first)
+                        init = callback(init, *first);
+                }
+                else if constexpr (args_count_v<F> == 3) {
+                    for (SizeT i = 0; first != last; ++first)
+                        init = callback(init, *first, i++);
+                }
+
+                return init;
+            }
         }
 
         // Reduce without initial value.

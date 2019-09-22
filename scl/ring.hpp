@@ -7,8 +7,6 @@
 #include "string.hpp"
 
 namespace ftl {
-
-
     namespace ring_impl {
         template <typename T>
         struct Storage {

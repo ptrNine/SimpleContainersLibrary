@@ -1,0 +1,9 @@
+[submodule "remote/googletest"]
+	path = remote/googletest
+	url = https://github.com/google/googletest
+[submodule "remote/fmt"]
+	path = remote/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "remote/utfcpp"]
+	path = remote/utfcpp
+	url = https://github.com/nemtrif/utfcpp

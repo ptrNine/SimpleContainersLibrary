@@ -25,3 +25,9 @@ namespace scl {
     using SizeT   = std::size_t;
     using PtrDiff = std::ptrdiff_t;
 }
+
+namespace std {
+    inline ostream& operator<< (ostream& os, scl::Byte byte) {
+        return os << "0x" << hex << setfill('0') << setw(2) << scl::U32(byte);
+    }
+}

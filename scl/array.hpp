@@ -9,8 +9,8 @@
 //#include "string.hpp"
 
 namespace scl {
-    template <typename T, SizeT _Size>
-    class Array {
+    template <typename T, SizeT _Size, template<typename, SizeT> class Derived>
+    class ArrayBase {
     public:
         using ValType = T;
         using Iter    = typename std::array<T, _Size>::iterator;
@@ -19,15 +19,6 @@ namespace scl {
         using CRIter  = typename std::array<T, _Size>::const_reverse_iterator;
 
         static constexpr SizeT c_size = _Size;
-
-    protected:
-        template <typename F, SizeT pos>
-        inline static constexpr void
-        _foreach_iter(F callback, Array& array) noexcept {
-            callback(std::get<pos>(array._stl_array));
-            if constexpr (pos + 1 < _Size)
-                _foreach_iter<F, pos + 1>(callback, array);
-        }
 
     public:
 
@@ -59,35 +50,25 @@ namespace scl {
         constexpr auto at (SizeT position)       -> T&       { return _stl_array.at(position); }
         constexpr auto at (SizeT position) const -> const T& { return _stl_array.at(position); }
 
-        auto fill (const T& value) -> Array& { _stl_array.fill(std::cref(value)); return *this; }
-        auto swap (Array& array)   -> Array& { _stl_array.swap(array._stl_array); return *this; }
+        auto fill (const T& value) -> Derived<T, _Size>& {
+            _stl_array.fill(std::cref(value)); return
+            *static_cast<Derived<T, _Size>*>(this);
+        }
+
+        auto swap (Derived<T, _Size>& array) -> Derived<T, _Size>& {
+            _stl_array.swap(array._stl_array);
+            return *static_cast<Derived<T, _Size>*>(this);
+        }
 
         // Operators
         constexpr auto operator[] (SizeT position) noexcept       -> T&       { return _stl_array[position]; }
         constexpr auto operator[] (SizeT position) const noexcept -> const T& { return _stl_array[position]; }
 
-        friend std::ostream& operator<< (std::ostream& os, const Array& array) {
+        friend std::ostream& operator<< (std::ostream& os, const ArrayBase& array) {
             array.print(os);
             return os;
         }
 
-
-
-        // New methods
-
-        // Compile-time methods
-        template <typename F>
-        constexpr auto ccount_if(F callback) const -> SizeT {
-            return details::_count_elements<decltype(_stl_array), F, _Size>(callback, _stl_array);
-        }
-
-        template <typename F>
-        constexpr auto cmap(F callback) const {
-            auto array = Array<return_type_of_t<F>, _Size>();
-            return _map_iter<F>(callback, array);
-        }
-
-        // Runtime
         /**
          *
          * @tparam RedTp - return type of callback and type of its first argument
@@ -124,12 +105,11 @@ namespace scl {
          * @return Vector with mapped values
          */
         template <typename F>
-        auto map(F callback) const -> Array<return_type_of_t<F>, _Size>
-        {
+        auto map(F callback) const -> Derived<return_type_of_t<F>, _Size> const {
             static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
                           "Callback has wrong number of arguments");
 
-            auto mapped = Array<return_type_of_t<F>, _Size>();
+            auto mapped = Derived<return_type_of_t<F>, _Size>();
 
             if constexpr (args_count_v<F> == 1) {
                 for (SizeT i = 0; i < _Size; ++i)
@@ -149,8 +129,7 @@ namespace scl {
          * @return this Vector
          */
         template <typename F>
-        auto foreach(F callback) -> Array&
-        {
+        auto foreach(F callback) -> Derived<T, _Size>& {
             static_assert(is_same_v<return_type_of_t<F>, void>, "Foreach callback can't return value!");
             static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
                           "Callback has wrong number of arguments");
@@ -164,20 +143,94 @@ namespace scl {
                     callback(item, i++);
             }
 
-            return *this;
+            return *static_cast<Derived<T, _Size>*>(this);
+        }
+
+        /**
+         * Create string from array with delimiter
+         * @tparam StrT - string type
+         * @param delim - delimiter
+         * @return - new string
+         */
+        template <typename StrT>
+        auto str_fold(const StrT& delim) const {
+            auto res = std::string();
+
+            if constexpr (_Size == 0)
+                return res;
+            else if constexpr (_Size == 1)
+                return res = fmt::to_string(front());
+            else {
+                for (SizeT i = 0; i < _Size - 1; ++i)
+                    res += fmt::to_string(at(i)) += delim;
+                return res += fmt::to_string(back());
+            }
+        }
+
+        /**
+         * Create string from array with delimiter
+         * @tparam StrT
+         * @tparam F - type of callback
+         * @param callback - function like auto f(Type item) -> bool
+         * @param delim - delimiter
+         * @return - new string
+         */
+        template <typename StrT, typename F>
+        auto str_fold_if(const StrT& delim, F callback) const {
+            static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
+                          "Callback has wrong number of arguments");
+
+            auto res = std::string();
+            res.reserve(_Size * std::size(delim));
+
+            if constexpr (_Size == 0)
+                return res;
+            else if constexpr (_Size == 1) {
+                if constexpr (args_count_v<F> == 1)
+                    return callback(front()) ? fmt::to_string(front()) : res;
+                else
+                    return callback(front(), 0) ? fmt::to_string(front()) : res;
+            } else {
+                if constexpr (args_count_v<F> == 1) {
+                    for (SizeT i = 0; i < _Size - 1; ++i)
+                        if (callback(at(i)))
+                            res += fmt::to_string(at(i)) += delim;
+                    return callback(back()) ? res += fmt::to_string(back()) : res;
+                }
+                else {
+                    for (SizeT i = 0; i < _Size - 1; ++i)
+                        if (callback(at(i), i))
+                            res += fmt::to_string(at(i)) += delim;
+                    return callback(back(), _Size - 1) ? res += fmt::to_string(back()) : res;
+                }
+            }
         }
         /**
          *
          * @tparam F - type of callback
          * @param[in] callback - function like auto f(Type l, Type r) -> bool
-         * @param Type l - one item from vector
-         * @param Type r - next item from vector
-         * @return this Vector
+         * @param Type l - one item from array
+         * @param Type r - next item from array
+         * @return this Array
          */
         template <typename F>
-        auto sort(F callback) -> Array& {
+        auto sort(F callback) -> Derived<T, _Size>& {
             std::sort(_stl_array.begin(), _stl_array.end(), callback);
-            return *this;
+            return *static_cast<Derived<T, _Size>*>(this);
+        }
+
+        /**
+         * Reverse the Array
+         * @return reversed Array
+         */
+        auto reverse() const {
+            auto res = Derived<T, _Size>();
+            SizeT i = 0;
+
+            for (auto iter = crbegin(); iter != crend(); ++iter)
+                res[i++] = *iter;
+
+            return res;
         }
 
         auto to_string() const -> std::string {
@@ -192,123 +245,60 @@ namespace scl {
             return std::hash<std::array<T, _Size>>()(_stl_array);
         }
 
-    protected:
-        // constexpr cmap realization
-        template <typename F, typename NewType, SizeT pos>
-        constexpr auto _map_iter(F callback, Array<NewType, _Size>& newArray) const
-        -> typename std::enable_if_t<pos == _Size, Array<NewType, _Size>>
-        {
-            return newArray;
+    public:
+        // Operators
+
+        auto operator==(const Derived<T, _Size>& arr) const -> bool {
+            return std::equal(begin(), end(), arr.begin());
+        }
+        auto operator!=(const Derived<T, _Size>& arr) const -> bool {
+            return !(*this == arr);
+        }
+        auto operator<(const Derived<T, _Size>& arr) const -> bool {
+            return std::lexicographical_compare(begin(), end(), arr.begin(), arr.end());
+        }
+        auto operator>(const Derived<T, _Size>& arr) const -> bool {
+            return *this < arr;
+        }
+        auto operator>=(const Derived<T, _Size>& arr) const -> bool {
+            return !(*this < arr);
+        }
+        auto operator<=(const Derived<T, _Size>& arr) const -> bool {
+            return !(*this > arr);
         }
 
-        template <typename F, typename NewType, SizeT pos = 0>
-        constexpr auto _map_iter(F callback, Array<NewType, _Size>& newArray) const
-        -> typename std::enable_if_t<pos != _Size && args_count_v<F> == 1, Array<NewType, _Size>>
-        {
-            std::get<pos>(newArray._stl_array) = callback(std::get<pos>(_stl_array));
-            return _map_iter<F, NewType, pos + 1>(callback, newArray);
+        template <SizeT _size>
+        auto operator+ (const Derived<T, _size>& arr) const {
+            auto res = Derived<T, _Size + _size>();
+
+            auto a =std::array{23, 5, 6};
         }
 
-        template <typename F, typename NewType, SizeT pos = 0>
-        constexpr auto _map_iter(F callback, Array<NewType, _Size>& newArray) const
-        -> typename std::enable_if_t<pos != _Size && args_count_v<F> == 2, Array<NewType, _Size>>
-        {
-            std::get<pos>(newArray._stl_array) = callback(std::get<pos>(_stl_array), pos);
-            return _map_iter<F, NewType, pos + 1>(callback, newArray);
+        template<SizeT _pos>
+        friend constexpr auto get(Derived<T, _Size>& array) noexcept -> T& {
+            return std::get<_pos>(array._stl_array);
         }
-
-        template <typename F, typename NewType, SizeT pos>
-        constexpr auto _reduce_iter(F callback, NewType result) const
-        -> typename std::enable_if_t<pos == _Size, NewType> {
-            return result;
+        template<SizeT _pos>
+        friend constexpr auto get(const Derived<T, _Size>& array) noexcept -> const T& {
+            return std::get<_pos>(array._stl_array);
         }
-
-        template <typename F, typename NewType, SizeT pos>
-        constexpr auto _reduce_iter(F callback, NewType result) const
-        -> typename std::enable_if_t<pos != 0 && pos != _Size, NewType> {
-            return _reduce_iter<F, NewType, pos + 1> (
-                    callback,
-                    callback(result, std::get<pos + 1>(_stl_array)));
+        template<SizeT _pos>
+        friend constexpr auto get(Derived<T, _Size>&& array) noexcept -> T&& {
+            return std::move(std::get<_pos>(array._stl_array));
         }
-
-        template <typename F, typename NewType, SizeT pos = 0>
-        constexpr auto _reduce_iter(F callback) const
-        -> typename std::enable_if_t<pos == 0, NewType> {
-            return _reduce_iter<F, NewType, pos + 1> (
-                        callback,
-                        callback(std::get<pos>    (_stl_array),
-                                 std::get<pos + 1>(_stl_array)));
-        }
-
 
     public:
         std::array<T, _Size> _stl_array;
     };
 
+
+    template <typename T, SizeT _Size>
+    class Array : public ArrayBase<T, _Size, Array> {};
+
+
     template<typename Type, typename... ValType>
     Array(Type, ValType...)
     -> Array<std::enable_if_t<(std::is_same_v<Type, ValType> && ...), Type>, 1 + sizeof...(ValType)>;
-
-    template<typename Type, SizeT _size>
-    inline auto operator==(const Array<Type, _size>& one, const Array<Type, _size>& two) -> bool {
-        return std::equal(one.begin(), one.end(), two.begin());
-    }
-    template<typename Type, SizeT _size>
-    inline auto operator!=(const Array<Type, _size>& one, const Array<Type, _size>& two) -> bool {
-        return !(one == two);
-    }
-    template<typename Type, SizeT _size>
-    inline auto operator<(const Array<Type, _size>& one, const Array<Type, _size>& two) -> bool {
-        return std::lexicographical_compare(one.begin(), one.end(), two.begin(), two.end());
-    }
-    template<typename Type, SizeT _size>
-    inline auto operator>(const Array<Type, _size>& one, const Array<Type, _size>& two) -> bool {
-        return two < one;
-    }
-    template<typename Type, SizeT _size>
-    inline auto operator>=(const Array<Type, _size>& one, const Array<Type, _size>& two) -> bool {
-        return !(one < two);
-    }
-    template<typename Type, SizeT _size>
-    inline auto operator<=(const Array<Type, _size>& one, const Array<Type, _size>& two) -> bool {
-        return !(one > two);
-    }
-
-    template<SizeT _pos, typename Type, SizeT _size>
-    constexpr auto get(scl::Array<Type, _size>& array) noexcept -> Type& {
-        return std::get<_pos>(array._stl_array);
-    }
-    template<SizeT _pos, typename Type, SizeT _size>
-    constexpr auto get(const scl::Array<Type, _size>& array) noexcept -> const Type& {
-        return std::get<_pos>(array._stl_array);
-    }
-    template<SizeT _pos, typename Type, SizeT _size>
-    constexpr auto get(scl::Array<Type, _size>&& array) noexcept -> Type&& {
-        return std::move(std::get<_pos>(array._stl_array));
-    }
-}
-
-namespace std {
-    template<size_t _pos, typename Type, size_t _size>
-    constexpr auto get(scl::Array<Type, _size>& array) noexcept -> Type& {
-        return std::get<_pos>(array._stl_array);
-    }
-    template<size_t _pos, typename Type, size_t _size>
-    constexpr auto get(const scl::Array<Type, _size>& array) noexcept -> const Type& {
-        return std::get<_pos>(array._stl_array);
-    }
-    template<size_t _pos, typename Type, size_t _size>
-    constexpr auto get(scl::Array<Type, _size>&& array) noexcept -> Type&& {
-        return std::move(std::get<_pos>(array._stl_array));
-    }
-}
-
-namespace details {
-    template<typename Type, size_t _size, typename F, typename... Types>
-    constexpr auto map(F callback, Types... args) -> scl::Array<Type, _size> {
-        std::tuple<Types...> result((callback(args))...);
-        return result;
-    }
 }
 
 namespace std {

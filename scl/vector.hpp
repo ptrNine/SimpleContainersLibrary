@@ -9,7 +9,7 @@
 #include "containers_base.hpp"
 #include "string.hpp"
 
-namespace ftl {
+namespace scl {
     template<typename Type>
     class Vector {
         using iterator         = typename std::vector<Type>::iterator;
@@ -169,7 +169,7 @@ namespace ftl {
          */
         template <typename RedTp, typename Function>
         auto reduce(Function callback, RedTp init) const {
-            return ftl::_iter_reduce(cbegin(), cend(), callback, init);
+            return details::_iter_reduce(cbegin(), cend(), callback, init);
         }
 
         /**
@@ -183,7 +183,7 @@ namespace ftl {
          */
         template <typename Function>
         auto reduce(Function callback) const {
-            return ftl::_iter_reduce(cbegin(), cend(), callback);
+            return details::_iter_reduce(cbegin(), cend(), callback);
         }
         /**
          *
@@ -193,19 +193,19 @@ namespace ftl {
          * @return Vector with mapped values
          */
         template <typename Function>
-        auto map(Function callback) const -> Vector<ttr::return_type_of<Function>> {
+        auto map(Function callback) const -> Vector<return_type_of_t<Function>> {
             static_assert(
-                    ttr::args_count<Function> == 1 ||
-                    ttr::args_count<Function> == 2,
+                    args_count_v<Function> == 1 ||
+                    args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
-            auto mapped = Vector<ttr::return_type_of<Function>>();
+            auto mapped = Vector<return_type_of_t<Function>>();
             mapped.reserve(size());
 
-            if constexpr (ttr::args_count<Function> == 1) {
+            if constexpr (args_count_v<Function> == 1) {
                 for (auto &item : _stl_vector)
                     mapped.emplace_back(callback(item));
-            } else if constexpr (ttr::args_count<Function> == 2) {
+            } else if constexpr (args_count_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : _stl_vector)
                     mapped.emplace_back(callback(item, i++));
@@ -222,18 +222,18 @@ namespace ftl {
         template <typename Function>
         auto filter(Function callback) const -> Vector {
             static_assert(
-                    ttr::args_count<Function> == 1 ||
-                    ttr::args_count<Function> == 2,
+                    args_count_v<Function> == 1 ||
+                    args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
             auto filtered = Vector();
 
-            if constexpr (ttr::args_count<Function> == 1) {
+            if constexpr (args_count_v<Function> == 1) {
                 for (auto& item : _stl_vector)
                     if (callback(item))
                         filtered.emplace_back(item);
-            } else if constexpr (ttr::args_count<Function> == 2) {
+            } else if constexpr (args_count_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto& item : _stl_vector)
                     if (callback(item, i++))
@@ -252,15 +252,15 @@ namespace ftl {
         template <typename Function>
         auto foreach(Function callback) -> Vector& {
             static_assert(
-                    ttr::args_count<Function> == 1 ||
-                    ttr::args_count<Function> == 2,
+                    args_count_v<Function> == 1 ||
+                            args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
-            if constexpr (ttr::args_count<Function> == 1) {
+            if constexpr (args_count_v<Function> == 1) {
                 for (auto &item : _stl_vector)
                     callback(item);
-            } else if constexpr (ttr::args_count<Function> == 2) {
+            } else if constexpr (args_count_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : _stl_vector)
                     callback(item, i++);
@@ -282,14 +282,14 @@ namespace ftl {
             return *this;
         }
 
-        auto to_string() const -> ftl::String {
+        auto to_string() const -> scl::String {
             auto sstream = std::stringstream();
             print(sstream);
             return sstream.str();
         }
 
         void print(std::ostream& os = std::cout) const {
-            ftl::_iter_print(cbegin(), cend(), size(), os);
+            details::_iter_print(cbegin(), cend(), size(), os);
         }
 
         U64 hash() const { return XXH64(_stl_vector.data(), _stl_vector.size() * sizeof(Type), 0); }
@@ -336,20 +336,20 @@ namespace ftl {
 
 // fmt format
 template <typename Type>
-struct fmt::formatter<ftl::Vector<Type>> {
+struct fmt::formatter<scl::Vector<Type>> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const ftl::Vector<Type>& vec, FormatContext& ctx) {
+    auto format(const scl::Vector<Type>& vec, FormatContext& ctx) {
         return format_to(ctx.out(), "{}", vec.to_string());
     }
 };
 
 // std hash
 template <typename Type>
-struct std::hash<ftl::Vector<Type>> {
-    U64 operator()(const ftl::Vector<Type>& vec) const {
+struct std::hash<scl::Vector<Type>> {
+    size_t operator()(const scl::Vector<Type>& vec) const {
         return vec.hash();
     }
 };
