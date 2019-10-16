@@ -6,26 +6,22 @@ macro(git_submodule_build _project_name)
 
     project(${_project_name}_download)
 
-    message("-- Submodule '${_project_name}' at ${PROJECT_SOURCE_DIR}/remote/${_project_name}")
-    message("    BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-    message("    CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
-    message("    INSTALL_PREFIX: ${PROJECT_BINARY_DIR}/fakeroot")
-    message("    CMAKE_ARGS ${${_project_name}_CMAKE_ARGS}")
+    message("-- Build submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/remote/${_project_name}")
 
     set(${_project_name}_command
             -G ${CMAKE_GENERATOR}
             .
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/fakeroot
-            -B${PROJECT_BINARY_DIR}/remote/${_project_name}
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/fakeroot
+            -B${CMAKE_BINARY_DIR}/remote/${_project_name}
     )
 
     list(APPEND ${_project_name}_command ${${_project_name}_CMAKE_ARGS})
 
     execute_process(COMMAND ${CMAKE_COMMAND} ${${_project_name}_command}
             RESULT_VARIABLE result
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/remote/${_project_name}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/remote/${_project_name}
     )
 
     if(result)
@@ -34,7 +30,7 @@ macro(git_submodule_build _project_name)
 
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install
             RESULT_VARIABLE result
-            WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/remote/${_project_name}
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/remote/${_project_name}
     )
 
     if(result)

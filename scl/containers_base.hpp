@@ -10,6 +10,9 @@
 
 namespace scl {
 
+    template <typename CharT, typename TraitsT, typename AllocT>
+    class StringBase;
+
     namespace details {
 
         // Compile-time functions
@@ -132,20 +135,98 @@ namespace scl {
             }
         }
 
-        template <typename CIterT>
-        static std::string _iter_to_string(CIterT cbegin, CIterT cend, SizeT size) {
-            std::string str;
+        template <typename StrT, typename CIterT>
+        static StrT _iter_to_string(CIterT cbegin, CIterT cend, SizeT size) {
+            StrT str;
 
             switch (size) {
                 case 0: return "{}";
-                case 1: return std::string("{ ") + fmt::to_string(*cbegin) + " }";
+                case 1: return StrT("{ ") + StrT(fmt::to_string(*cbegin)) + " }";
                 default:
-                    str += std::string("{ ") += fmt::to_string(*cbegin++);
+                    str += StrT("{ ") += StrT(fmt::to_string(*cbegin++));
                     for (; cbegin != cend; ++cbegin)
-                        str += std::string(", ") += fmt::to_string(*cbegin);
+                        str += StrT(", ") += StrT(fmt::to_string(*cbegin));
                     str += " }";
                     return str;
             }
+        }
+
+        template <typename OutStrT, typename Container, typename StrT>
+        auto _str_fold(const Container& c, const StrT& delim) {
+            auto res = OutStrT();
+            auto sz = c.size();
+
+            if (sz == 0)
+                return res;
+            else if (sz == 1)
+                return OutStrT(fmt::to_string(c.front()));
+            else {
+                for (SizeT i = 0; i < sz - 1; ++i)
+                    res += fmt::to_string(c[i]) += delim;
+                return res + fmt::to_string(c.back());
+            }
+        }
+
+
+        template <typename OutStrT, typename Container, typename StrT, typename F>
+        auto _str_fold_if(const Container& c, const StrT& delim, F callback) {
+            static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
+                          "Callback has wrong number of arguments");
+
+            auto res = OutStrT();
+            res.reserve(c.size() * std::size(delim));
+            auto sz = c.size();
+
+            if (sz == 0)
+                return res;
+            else if (sz == 1) {
+                if constexpr (args_count_v<F> == 1)
+                    return callback(c.front()) ? OutStrT(fmt::to_string(c.front())) : res;
+                else
+                    return callback(c.front(), 0) ? OutStrT(fmt::to_string(c.front())) : res;
+            } else {
+                if constexpr (args_count_v<F> == 1) {
+                    for (SizeT i = 0; i < sz - 1; ++i)
+                        if (callback(c[i]))
+                            res += fmt::to_string(c[i]) += delim;
+                    return callback(c.back()) ? res += fmt::to_string(c.back()) : (res.empty() ? res : res.pop_back());
+                }
+                else {
+                    for (SizeT i = 0; i < sz - 1; ++i)
+                        if (callback(c[i], i))
+                            res += fmt::to_string(c[i]) += delim;
+                    return callback(c.back(), sz - 1) ? res += fmt::to_string(c.back())
+                                                    : (res.empty() ? res : res.pop_back());
+                }
+            }
+        }
+
+        // FNV1a32 for 32-bit arch
+        template <typename T>
+        inline auto hash(T* data, SizeT size, uint32_t hash = 0x811c9dc5)
+        -> std::enable_if_t<sizeof(SizeT) == 4, SizeT>
+        {
+            auto ptr = reinterpret_cast<uint8_t*>(data);
+            size *= sizeof(T);
+
+            while (size--)
+                hash = (hash ^ *ptr++) * 0x01000193;
+
+            return hash;
+        }
+
+        // FNV1a64 for 64-bit arch
+        template <typename T>
+        inline auto hash(T* data, SizeT size, uint64_t hash = 0xcbf29ce484222325)
+        -> std::enable_if_t<sizeof(SizeT) == 8, SizeT>
+        {
+            auto ptr = reinterpret_cast<uint8_t*>(data);
+            size *= sizeof(T);
+
+            while (size--)
+                hash = (hash ^ *ptr++) * 0x100000001b3;
+
+            return hash;
         }
 
     } // namespace details

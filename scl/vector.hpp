@@ -10,18 +10,19 @@
 #include "string.hpp"
 
 namespace scl {
-    template<typename Type>
+    template<typename Type, typename AllocT = std::allocator<Type>>
     class Vector {
-        using iterator         = typename std::vector<Type>::iterator;
-        using const_iterator   = typename std::vector<Type>::const_iterator;
-        using r_iterator       = typename std::vector<Type>::reverse_iterator;
-        using const_r_iterator = typename std::vector<Type>::const_reverse_iterator;
-        using allocator_type   = typename std::vector<Type>::allocator_type;
-        using RefType          = typename std::vector<Type>::reference;
-        using C_RefType        = typename std::vector<Type>::const_reference;
+        using iterator         = typename std::vector<Type, AllocT>::iterator;
+        using const_iterator   = typename std::vector<Type, AllocT>::const_iterator;
+        using r_iterator       = typename std::vector<Type, AllocT>::reverse_iterator;
+        using const_r_iterator = typename std::vector<Type, AllocT>::const_reverse_iterator;
+        using allocator_type   = typename std::vector<Type, AllocT>::allocator_type;
+        using RefType          = typename std::vector<Type, AllocT>::reference;
+        using C_RefType        = typename std::vector<Type, AllocT>::const_reference;
 
     public:
-        using ValType = Type;
+        using value_type = Type;
+        using ValType    = Type;
 
         ~Vector () noexcept = default;
 
@@ -51,11 +52,9 @@ namespace scl {
         Vector (std::initializer_list<Type> initList, const allocator_type& allocator = allocator_type())
             : _stl_vector(initList, std::cref(allocator)){}
 
-        template<typename InpIter, typename = std::_RequireInputIter<InpIter>>
+        template<typename InpIter>
         Vector (InpIter first, InpIter last, const allocator_type& allocator = allocator_type())
             : _stl_vector(first, last, std::cref(allocator)){}
-
-
 
 
         // Base functions
@@ -253,7 +252,7 @@ namespace scl {
         auto foreach(Function callback) -> Vector& {
             static_assert(
                     args_count_v<Function> == 1 ||
-                            args_count_v<Function> == 2,
+                    args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
@@ -281,19 +280,54 @@ namespace scl {
             std::sort(_stl_vector.begin(), _stl_vector.end(), callback);
             return *this;
         }
+        /**
+         * Create string from array with delimiter
+         * @tparam StrT - string type
+         * @param delim - delimiter
+         * @return - new string
+         */
+        template <typename StrT>
+        auto str_fold(const StrT& delim) const {
+            return details::_str_fold<scl::String>(*this, delim);
+        }
+        /**
+         * Create string from array with delimiter
+         * @tparam StrT
+         * @tparam F - type of callback
+         * @param callback - function like auto f(Type item) -> bool
+         * @param delim - delimiter
+         * @return - new string
+         */
+        template <typename StrT, typename F>
+        auto str_fold_if(const StrT& delim, F callback) const {
+            return details::_str_fold_if<scl::String>(*this, delim, callback);
+        }
+        /**
+         * Reverse the Vector
+         * @return reversed Vector
+         */
+        auto reverse() const {
+            auto res = Vector(size());
 
-        auto to_string() const -> scl::String {
-            auto sstream = std::stringstream();
-            print(sstream);
-            return sstream.str();
+            SizeT i = 0;
+
+            for (auto iter = crbegin(); iter != crend(); ++iter)
+                res[i++] = *iter;
+
+            return res;
+        }
+
+        auto to_string() const {
+            return details::_iter_to_string<scl::String>(cbegin(), cend(), size());
         }
 
         void print(std::ostream& os = std::cout) const {
             details::_iter_print(cbegin(), cend(), size(), os);
         }
 
-        U64 hash() const { return XXH64(_stl_vector.data(), _stl_vector.size() * sizeof(Type), 0); }
-
+        SizeT hash() const {
+            return std::hash(_stl_vector)();
+        }
 
         // Operators
         auto operator= (const Vector& vector) -> Vector& {
@@ -327,10 +361,14 @@ namespace scl {
             return true;
         }
 
+        bool operator!=(const Vector& r) const {
+            return !(*this == r);
+        }
+
         friend std::ostream& operator<< (std::ostream& os, const Vector& vector) { vector.print(os); return os; }
 
     protected:
-        std::vector<Type> _stl_vector;
+        std::vector<Type, AllocT> _stl_vector;
     };
 }
 

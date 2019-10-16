@@ -4,9 +4,10 @@
 #include <type_traits>
 #include <utility>
 
-#include "../math.hpp"
+#include "math.hpp"
+#include "types.hpp"
+#include "traits.hpp"
 #include "containers_base.hpp"
-#include "../concepts.hpp"
 #include "string.hpp"
 
 #define ICA inline constexpr auto
@@ -16,34 +17,28 @@
 #define VECTOR_FISR_ITERS_COUNT 3
 #endif
 
-namespace ftl {
+namespace scl {
 
-    template<typename Type>
-    class Vector2 {
-        static_assert(concepts::numbers<Type>, "Template type must be number");
+    template<typename Type, typename DerivedT>
+    class Vector2Base {
+        static_assert(is_number_v<Type>, "Template type must be number");
 
     public:
         using ValType = Type;
 
-        constexpr Vector2() noexcept : _x(0), _y(0) {}
+        constexpr Vector2Base() noexcept : _x(0), _y(0) {}
 
-        constexpr Vector2(const Vector2& vec) noexcept
-            : Vector2(vec._x, vec._y) {}
-
-        constexpr Vector2(Vector2&& vec) noexcept
-            : _x(std::move(vec._x)), _y(std::move(vec._y)) {}
-
-        constexpr Vector2(Type x, Type y) noexcept : _x(x), _y(y) {}
+        constexpr Vector2Base(Type x, Type y) noexcept : _x(x), _y(y) {}
 
         explicit constexpr
-        Vector2(Type val) noexcept : _x(val), _y(val) {}
+        Vector2Base(Type val) noexcept : _x(val), _y(val) {}
 
 
     public:
         ICA& set(Type x, Type y) noexcept {
             _x = x;
             _y = y;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
         ICA& x() noexcept { return _x; }
@@ -53,95 +48,95 @@ namespace ftl {
         const ICA& y() const noexcept { return _y; }
 
         // Same to '+', '-' ... operators
-        ICA add(const Vector2& r) const noexcept {
-            return Vector2(_x + r._x, _y + r._y);
+        ICA add(const DerivedT& r) const noexcept {
+            return DerivedT(_x + r._x, _y + r._y);
         }
 
-        ICA sub(const Vector2& r) const noexcept {
-            return Vector2(_x - r._x, _y - r._y);
+        ICA sub(const DerivedT& r) const noexcept {
+            return DerivedT(_x - r._x, _y - r._y);
         }
 
         ICA scalarAdd(const Type& val) const noexcept {
-            return Vector2(_x + val, _y + val);
+            return DerivedT(_x + val, _y + val);
         }
 
         ICA scalarSub(const Type& val) const noexcept {
-            return Vector2(_x - val, _y - val);
+            return DerivedT(_x - val, _y - val);
         }
 
         ICA scalarMul(const Type& val) const noexcept {
-            return Vector2(_x * val, _y * val);
+            return DerivedT(_x * val, _y * val);
         }
 
         ICA scalarDiv(const Type& val) const {
-            return Vector2(_x / val, _y / val);
+            return DerivedT(_x / val, _y / val);
         }
 
         // Same to '+=', '-=', ... operators
-        ICA& makeAdd(const Vector2& r) noexcept {
+        ICA& makeAdd(const DerivedT& r) noexcept {
             _x += r._x;
             _y += r._y;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
-        ICA& makeSub(const Vector2& r) noexcept {
+        ICA& makeSub(const DerivedT& r) noexcept {
             _x -= r._x;
             _y -= r._y;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
         ICA& makeScalarAdd(const Type& val) noexcept {
             _x += val;
             _y += val;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
         ICA& makeScalarSub(const Type& val) noexcept {
             _x -= val;
             _y -= val;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
         ICA& makeScalarMul(const Type& val) noexcept {
             _x *= val;
             _y *= val;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
         ICA& makeScalarDiv(const Type& val) {
             _x /= val;
             _y /= val;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
-        ICA dotProduct(const Vector2 &r) const noexcept { return _x * r._x + _y * r._y; }
+        ICA dotProduct(const DerivedT &r) const noexcept { return _x * r._x + _y * r._y; }
 
         ICA magnitude2() const noexcept { return _x * _x + _y * _y; }
 
 
         // Format and print
-        auto to_string() const -> ftl::String {
-            return ftl::String().sprintf("{} {}, {} {}", "{", _x, _y, "}");
+        auto to_string() const -> scl::String {
+            return scl::String().sprintf("{} {}, {} {}", "{", _x, _y, "}");
         }
 
         void print(std::ostream& os = std::cout) const {
             os << to_string();
         }
 
-        friend std::ostream& operator<< (std::ostream& os, const Vector2& vec) { vec.print(os); return os; }
+        friend std::ostream& operator<< (std::ostream& os, const DerivedT& vec) { vec.print(os); return os; }
 
         // Operators
 
         // Equality
-        ICA operator==(const Vector2& r) const noexcept { return _x == r._x && _y == r._y; }
-        ICA operator!=(const Vector2& r) const noexcept { return !(*this == r); }
+        ICA operator==(const DerivedT& r) const noexcept { return _x == r._x && _y == r._y; }
+        ICA operator!=(const DerivedT& r) const noexcept { return !(*this == r); }
 
         // Vectors
-        ICA  operator+(const Vector2& r) const noexcept { return add(r); }
-        ICA  operator-(const Vector2& r) const noexcept { return sub(r); }
+        ICA  operator+(const DerivedT& r) const noexcept { return add(r); }
+        ICA  operator-(const DerivedT& r) const noexcept { return sub(r); }
 
-        ICA& operator+=(const Vector2& r) noexcept { return makeAdd(r); }
-        ICA& operator-=(const Vector2& r) noexcept { return makeSub(r); }
+        ICA& operator+=(const DerivedT& r) noexcept { return makeAdd(r); }
+        ICA& operator-=(const DerivedT& r) noexcept { return makeSub(r); }
 
         // Scalars
         ICA  operator+(const Type& val) const noexcept { return scalarAdd(val); }
@@ -154,26 +149,26 @@ namespace ftl {
         ICA& operator*=(const Type& val) noexcept { return makeScalarMul(val); }
         ICA& operator/=(const Type& val)          { return makeScalarDiv(val); }
 
-        ICA& operator=(const Vector2& r) noexcept {
+        ICA& operator=(const DerivedT& r) noexcept {
             _x = r._x;
             _y = r._y;
-            return *this;
+            return *static_cast<DerivedT*>(this);
         }
 
         template<SizeT _pos>
-        friend constexpr auto get(Vector2<Type> &v) noexcept -> Type & {
+        friend constexpr auto get(DerivedT& v) noexcept -> Type& {
             if constexpr (_pos == 0) return v._x;
             return v._y;
         }
 
         template<SizeT _pos>
-        friend constexpr auto get(const Vector2<Type> &v) noexcept -> const Type & {
+        friend constexpr auto get(const DerivedT& v) noexcept -> const Type& {
             if constexpr (_pos == 0) return v._x;
             return v._y;
         }
 
         template<SizeT _pos>
-        friend constexpr auto get(Vector2<Type> &&v) noexcept -> Type && {
+        friend constexpr auto get(DerivedT&& v) noexcept -> Type&& {
             if constexpr (_pos == 0) return std::move(v._x);
             return std::move(v._y);
         }
@@ -181,37 +176,45 @@ namespace ftl {
     protected:
         Type _x, _y;
     };
+
+    template <typename Type>
+    class Vector2 : public Vector2Base<Type, Vector2<Type>> {
+        using super = Vector2Base<Type, Vector2<Type>>;
+        using ValType = Type;
+
+    public:
+        constexpr Vector2() noexcept : super() {}
+
+        constexpr Vector2(Type x, Type y) noexcept : super(x, y) {}
+
+        explicit constexpr
+        Vector2(Type val) noexcept : super(val) {}
+    };
 } // namespace ftl
 
 namespace std {
 
     template<typename Type>
-    struct tuple_size<ftl::Vector2<Type>> : public integral_constant<SizeT, 2> {
+    struct tuple_size<scl::Vector2<Type>> : public integral_constant<scl::SizeT, 2> {
     };
 
-    template<SizeT _pos, typename Type>
-    struct tuple_element<_pos, ftl::Vector2<Type>> {
+    template<scl::SizeT _pos, typename Type>
+    struct tuple_element<_pos, scl::Vector2<Type>> {
         using type = Type;
     };
 }
 
-namespace ftl {
+namespace scl {
     template<typename Type>
-    class Vector2Flt : public Vector2<Type> {
-        using inherited = Vector2<Type>;
+    class Vector2Flt : public Vector2Base<Type, Vector2Flt<Type>> {
+        using super = Vector2Base<Type, Vector2Flt<Type>>;
     public:
-        constexpr Vector2Flt() noexcept : inherited() {}
+        constexpr Vector2Flt() noexcept : super() {}
 
-        constexpr Vector2Flt(const Vector2Flt& vec) noexcept
-            : inherited(vec._x, vec._y) {}
-
-        constexpr Vector2Flt(Vector2Flt&& vec) noexcept
-            : inherited(std::move(vec._x), std::move(vec._y)) {}
-
-        constexpr Vector2Flt(Type x, Type y) noexcept : inherited(x, y) {}
+        constexpr Vector2Flt(Type x, Type y) noexcept : super(x, y) {}
 
         explicit constexpr
-        Vector2Flt(Type val) noexcept : inherited(val) {}
+        Vector2Flt(Type val) noexcept : super(val) {}
 
 
         template<std::size_t _steps = 1>
@@ -227,13 +230,7 @@ namespace ftl {
 
         template<std::size_t _steps = 1>
         IA fastNormalize() const { Vector2Flt((*this) * fastInvMagnitude<_steps>()); }
-        IA normalize    () const { return inherited::scalarMul(fastInvMagnitude<VECTOR_FISR_ITERS_COUNT>()); }
-
-        ICA& operator=(const Vector2Flt& r) noexcept {
-            this->_x = r._x;
-            this->_y = r._y;
-            return *this;
-        }
+        IA normalize    () const { return super::scalarMul(fastInvMagnitude<VECTOR_FISR_ITERS_COUNT>()); }
 
         /*
         IA& makeRawPerpendicular() {
@@ -271,14 +268,14 @@ namespace ftl {
 
 namespace std {
     template <typename Type>
-    struct tuple_size<ftl::Vector2Flt<Type>> : public integral_constant<std::size_t, 2> {};
+    struct tuple_size<scl::Vector2Flt<Type>> : public integral_constant<std::size_t, 2> {};
 
     template <size_t _pos, typename Type>
-    struct tuple_element<_pos, ftl::Vector2Flt<Type>> { using type = Type; };
+    struct tuple_element<_pos, scl::Vector2Flt<Type>> { using type = Type; };
 }
 
 
-namespace ftl {
+namespace scl {
     using Vector2u   = Vector2<unsigned long>;
     using Vector2i   = Vector2<long>;
 
@@ -297,44 +294,44 @@ namespace ftl {
     using Vector2f64 = Vector2Flt<Float64>;
 
     template <typename Type>
-    ICA Vector2T(Type x, Type y) -> std::enable_if_t<concepts::integers<Type>, Vector2<Type>> {
+    ICA Vector2T(Type x, Type y) -> std::enable_if_t<std::is_integral_v<decay_t<Type>>, Vector2<Type>> {
         return Vector2<Type>(x, y);
     }
     template <typename Type>
-    ICA Vector2T(Type x, Type y) -> std::enable_if_t<concepts::floats<Type>, Vector2Flt<Type>> {
+    ICA Vector2T(Type x, Type y) -> std::enable_if_t<std::is_floating_point_v<decay_t<Type>>, Vector2Flt<Type>> {
         return Vector2Flt<Type>(x, y);
     }
 
-    template <typename OutType, typename InType, std::enable_if_t<concepts::integers<InType>>...>
+    template <typename OutType, typename InType, std::enable_if_t<std::is_integral_v<decay_t<InType>>>...>
     ICA Vector2Convert(const Vector2<InType>& vec) {
         return Vector2T<OutType>(vec.x(), vec.y());
     }
-    template <typename OutType, typename InType, std::enable_if_t<concepts::floats<InType>>...>
+    template <typename OutType, typename InType, std::enable_if_t<std::is_floating_point_v<decay_t<InType>>>...>
     ICA Vector2Convert(const Vector2Flt<InType>& vec) {
         return Vector2T<OutType>(vec.x(), vec.y());
     }
 
-} // namespace ftl
+} // namespace scl
 
 // fmt format
 template <typename Type>
-struct fmt::formatter<ftl::Vector2<Type>> {
+struct fmt::formatter<scl::Vector2<Type>> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const ftl::Vector2<Type>& vec, FormatContext& ctx) {
+    auto format(const scl::Vector2<Type>& vec, FormatContext& ctx) {
         return format_to(ctx.out(), "{}", vec.to_string());
     }
 };
 
 template <typename Type>
-struct fmt::formatter<ftl::Vector2Flt<Type>> {
+struct fmt::formatter<scl::Vector2Flt<Type>> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const ftl::Vector2Flt<Type>& vec, FormatContext& ctx) {
+    auto format(const scl::Vector2Flt<Type>& vec, FormatContext& ctx) {
         return format_to(ctx.out(), "{}", vec.to_string());
     }
 };

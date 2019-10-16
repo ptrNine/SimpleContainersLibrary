@@ -6,12 +6,12 @@
 #include <sstream>
 #include <functional>
 #include "containers_base.hpp"
-//#include "string.hpp"
 
 namespace scl {
     template <typename T, SizeT _Size, template<typename, SizeT> class Derived>
     class ArrayBase {
     public:
+        using value_type = T;
         using ValType = T;
         using Iter    = typename std::array<T, _Size>::iterator;
         using CIter   = typename std::array<T, _Size>::const_iterator;
@@ -145,7 +145,6 @@ namespace scl {
 
             return *static_cast<Derived<T, _Size>*>(this);
         }
-
         /**
          * Create string from array with delimiter
          * @tparam StrT - string type
@@ -154,7 +153,7 @@ namespace scl {
          */
         template <typename StrT>
         auto str_fold(const StrT& delim) const {
-            auto res = std::string();
+            auto res = scl::StringBase<Char8, std::char_traits<Char8>, std::allocator<Char8>>();
 
             if constexpr (_Size == 0)
                 return res;
@@ -166,7 +165,6 @@ namespace scl {
                 return res += fmt::to_string(back());
             }
         }
-
         /**
          * Create string from array with delimiter
          * @tparam StrT
@@ -180,7 +178,7 @@ namespace scl {
             static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
                           "Callback has wrong number of arguments");
 
-            auto res = std::string();
+            auto res = scl::StringBase<Char8, std::char_traits<Char8>, std::allocator<Char8>>();
             res.reserve(_Size * std::size(delim));
 
             if constexpr (_Size == 0)
@@ -195,13 +193,14 @@ namespace scl {
                     for (SizeT i = 0; i < _Size - 1; ++i)
                         if (callback(at(i)))
                             res += fmt::to_string(at(i)) += delim;
-                    return callback(back()) ? res += fmt::to_string(back()) : res;
+                    return callback(back()) ? res += fmt::to_string(back()) : (res.empty() ? res : res.pop_back());
                 }
                 else {
                     for (SizeT i = 0; i < _Size - 1; ++i)
                         if (callback(at(i), i))
                             res += fmt::to_string(at(i)) += delim;
-                    return callback(back(), _Size - 1) ? res += fmt::to_string(back()) : res;
+                    return callback(back(), _Size - 1) ? res += fmt::to_string(back())
+                                                       : (res.empty() ? res : res.pop_back());
                 }
             }
         }
@@ -233,8 +232,9 @@ namespace scl {
             return res;
         }
 
-        auto to_string() const -> std::string {
-            return details::_iter_to_string(cbegin(), cend(), _Size);
+        auto to_string() const {
+            using StrT = scl::StringBase<Char8, std::char_traits<Char8>, std::allocator<Char8>>;
+            return details::_iter_to_string<StrT>(cbegin(), cend(), _Size);
         }
 
         void print(std::ostream& os = std::cout) const {

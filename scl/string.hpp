@@ -1,14 +1,11 @@
 #ifndef DECAYENGINE_STRING_HPP
 #define DECAYENGINE_STRING_HPP
 
-#include <iomanip>
-#include <codecvt>
+#include <utf8.h>
 #include "containers_base.hpp"
-#include "types.hpp"
-#include "traits.hpp"
 
 namespace scl {
-    template<typename T>
+    template<typename T, typename AllocT>
     class Vector;
 
     template <typename CharT, typename TraitsT = std::char_traits<CharT>, typename AllocT = std::allocator<CharT>>
@@ -17,6 +14,7 @@ namespace scl {
                       "String must contains char symbols only");
 
     public:
+        using value_type = CharT;
         using CharType = CharT;
         using SizeType = typename std::basic_string<CharT, TraitsT, AllocT>::size_type;
         using IterT    = typename std::basic_string<CharT, TraitsT, AllocT>::iterator;
@@ -274,6 +272,7 @@ namespace scl {
         inline auto operator+=(CharT c) -> StringBase&               { _std_v += c; return *this; }
         template <SizeType _Size>
         inline auto operator+=(const CharT(&str)[_Size]) -> StringBase& { _std_v += str; return *this; }
+
         inline auto operator/(const StringBase& str) const
         {
             if (_std_v.empty() || str.empty())
@@ -337,7 +336,7 @@ namespace scl {
         inline auto operator[](SizeType pos) const -> const CharT& { return _std_v[pos]; }
 
         friend std::ostream& operator<< (std::ostream& os, const StringBase& str) {
-            os << str.c_str();
+            os << str.to_utf8().c_str();
             return os;
         }
 
@@ -347,7 +346,7 @@ namespace scl {
         operator StdStrCrefT () const noexcept { return _std_v; }
         operator StdStrView  () const noexcept { return StdStrView(_std_v); }
 
-        friend void swap (StringBase& a, StringBase& b) {
+        friend void swap(StringBase& a, StringBase& b) {
             std::swap(a._std_v, b._std_v);
         }
 
@@ -363,7 +362,7 @@ namespace scl {
 
         template <typename StrT>
         auto split(CharT c) const {
-            Vector<StrT> vec;
+            Vector<StrT, std::allocator<StrT>> vec;
 
             StrView data = _std_v;
             SizeType start = 0;
@@ -383,10 +382,10 @@ namespace scl {
 
         template <typename StrT>
         auto split(const StrView& str) const {
-            Vector<SizeType> idxs;
+            Vector<SizeType, std::allocator<SizeType>> idxs;
             idxs.reserve(128);
 
-            Vector<StrT> strs;
+            Vector<StrT, std::allocator<StrT>> strs;
             StrView data = _std_v;
 
             {
@@ -411,7 +410,7 @@ namespace scl {
 
         template <typename StrT>
         auto split(std::initializer_list<CharT> l, bool createNullStrs = false) const {
-            Vector<StrT> vec;
+            Vector<StrT, std::allocator<StrT>> vec;
             StrView data = _std_v;
             SizeType start = 0;
 
@@ -472,13 +471,6 @@ namespace scl {
             return substr(0, size);
         }
 
-        template<typename Facet>
-        struct CvtFacet : Facet {
-            template <typename ... ArgsT>
-            CvtFacet(ArgsT&& ... args) : Facet(args...) {}
-            ~CvtFacet() = default;
-        };
-
         template <
                 template<typename> class TraitsTemplate = std::char_traits,
                 template<typename> class AllocTemplate  = std::allocator>
@@ -488,12 +480,15 @@ namespace scl {
             if constexpr (is_same_v<CharT, Char8>) {
                 return NewStrT(cbegin(), cend());
             }
+            else if constexpr (is_same_v<CharT, Char16>){
+                NewStrT str;
+                utf8::utf16to8(cbegin(), cend(), std::back_inserter(str));
+                return str;
+            }
             else {
-                using CodecvtT = CvtFacet<std::codecvt<CharT, Char8, std::mbstate_t>>;
-                auto converter = std::wstring_convert<CodecvtT, CharT>();
-                auto str = converter.to_bytes(_std_v);
-
-                return NewStrT(str.cbegin(), str.cend());
+                NewStrT str;
+                utf8::utf32to8(cbegin(), cend(), std::back_inserter(str));
+                return str;
             }
         }
 
@@ -506,12 +501,40 @@ namespace scl {
             if constexpr (is_same_v<CharT, Char16>) {
                 return NewStrT(cbegin(), cend());
             }
+            else if constexpr (is_same_v<CharT, Char8>){
+                NewStrT str;
+                utf8::utf8to16(cbegin(), cend(), std::back_inserter(str));
+                return str;
+            }
             else {
-                using CodecvtT = CvtFacet<std::codecvt<CharT, Char16, std::mbstate_t>>;
-                auto converter = std::wstring_convert<CodecvtT, CharT>();
-                auto str = converter.to_bytes(_std_v);
+                auto tmp = StringBase<Char8, TraitsTemplate<Char8>, AllocTemplate<Char8>>();
+                NewStrT str;
+                utf8::utf32to8(cbegin(), cend(), std::back_inserter(tmp));
+                utf8::utf8to16(tmp.cbegin(), tmp.cend(), std::back_inserter(str));
+                return str;
+            }
+        }
 
-                return NewStrT(str.cbegin(), str.cend());
+        template <
+                template<typename> class TraitsTemplate = std::char_traits,
+                template<typename> class AllocTemplate  = std::allocator>
+        auto to_utf32() const {
+            using NewStrT = StringBase<Char32, TraitsTemplate<Char32>, AllocTemplate<Char32>>;
+
+            if constexpr (is_same_v<CharT, Char32>) {
+                return NewStrT(cbegin(), cend());
+            }
+            else if constexpr (is_same_v<CharT, Char8>){
+                NewStrT str;
+                utf8::utf8to32(cbegin(), cend(), std::back_inserter(str));
+                return str;
+            }
+            else {
+                auto tmp = StringBase<Char8, TraitsTemplate<Char8>, AllocTemplate<Char8>>();
+                NewStrT str;
+                utf8::utf16to8(cbegin(), cend(), std::back_inserter(tmp));
+                utf8::utf8to32(tmp.cbegin(), tmp.cend(), std::back_inserter(str));
+                return str;
             }
         }
 
@@ -532,7 +555,7 @@ struct fmt::formatter<scl::String> {
 
     template <typename FormatContext>
     auto format(const scl::String& str, FormatContext& ctx) {
-        return format_to(ctx.out(), "{}", str.c_str());
+        return format_to(ctx.out(), "{}", str.to_utf8().c_str());
     }
 };
 

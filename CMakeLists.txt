@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.10)
 project(SCL)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -8,8 +8,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
-include_directories(${PROJECT_BINARY_DIR}/fakeroot/include)
-link_directories(${PROJECT_BINARY_DIR}/fakeroot/lib)
+include_directories(${CMAKE_BINARY_DIR}/fakeroot/include)
+link_directories(${CMAKE_BINARY_DIR}/fakeroot/lib)
 
 include(CMake/git_submodule_build.cmake)
 include(CMake/git_submodule_update.cmake)
@@ -45,20 +45,20 @@ option(SCL_BUILD_EXAMPLES "Build example programs" OFF)
 
 install(
     FILES
-        ${PROJECT_BINARY_DIR}/UseSCL.cmake
-        ${PROJECT_BINARY_DIR}/SCLConfig.cmake
+        ${CMAKE_BINARY_DIR}/UseSCL.cmake
+        ${CMAKE_BINARY_DIR}/SCLConfig.cmake
     DESTINATION
         ${SCL_CMAKE_INSTALL_DIR}
 )
 
 configure_file(
-        ${PROJECT_SOURCE_DIR}/CMake/UseSCL.cmake.in
-        ${PROJECT_BINARY_DIR}/UseSCL.cmake COPYONLY
+        ${CMAKE_SOURCE_DIR}/CMake/UseSCL.cmake.in
+        ${CMAKE_BINARY_DIR}/UseSCL.cmake COPYONLY
 )
 
 configure_file(
-        ${PROJECT_SOURCE_DIR}/CMake/SCLConfig.cmake.in
-        ${PROJECT_BINARY_DIR}/SCLConfig.cmake @ONLY
+        ${CMAKE_SOURCE_DIR}/CMake/SCLConfig.cmake.in
+        ${CMAKE_BINARY_DIR}/SCLConfig.cmake @ONLY
 )
 
 install(
@@ -67,8 +67,6 @@ install(
 )
 
 if(SCL_BUILD_TESTS)
-    git_submodule_build(Catch2 CMAKE_ARGS -DCATCH_INSTALL_DOCS=OFF -DCATCH_BUILD_TESTING=OFF)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 

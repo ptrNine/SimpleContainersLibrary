@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iomanip>
 
 namespace scl {
     enum Byte : uint8_t {};

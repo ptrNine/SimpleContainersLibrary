@@ -1,12 +1,12 @@
 #pragma once
 
 #include <memory>
-#include "../baseTypes.hpp"
-#include "../assert.hpp"
 #include "containers_base.hpp"
 #include "string.hpp"
 
-namespace ftl {
+#define repeat(COUNT) for (std::size_t _REPEAT_I = 0; _REPEAT_I < (COUNT); ++_REPEAT_I)
+
+namespace scl {
     namespace ring_impl {
         template <typename T>
         struct Storage {
@@ -237,10 +237,10 @@ namespace ftl {
         auto crend  () const -> CRIterT { return CRIterT(&_s, _s.p_start - 1); }
 
         // Base functions
-        auto back         ()                -> RefType  { ASSERT(_s.size); return *(_s.p_end - 1); }
-        auto back         () const          -> CrefType { ASSERT(_s.size); return *(_s.p_end - 1); }
-        auto front        () noexcept       -> RefType  { ASSERT(_s.size); return *_s.p_start; }
-        auto front        () const noexcept -> CrefType { ASSERT(_s.size); return *_s.p_start; }
+        auto back         ()                -> RefType  { return *(_s.p_end - 1); }
+        auto back         () const          -> CrefType { return *(_s.p_end - 1); }
+        auto front        () noexcept       -> RefType  { return *_s.p_start; }
+        auto front        () const noexcept -> CrefType { return *_s.p_start; }
         auto empty        () const noexcept -> bool     { return _s.size == 0; }
         auto size         () const noexcept -> SizeT    { return _s.size; }
         auto capacity     () const noexcept -> SizeT    { return _s.max - 1; }
@@ -312,9 +312,8 @@ namespace ftl {
             if (new_size > old_size) {
                 reserve(new_size);
 
-                IterT last = end() + new_size;
-                for (auto i = begin() + old_size; i != last; ++i)
-                    new(i.raw_ptr()) Type(fill_value);
+                repeat(new_size - old_size)
+                    emplace_back(fill_value);
             }
             else if (new_size < old_size) {
                 auto last = begin() + new_size;
@@ -323,13 +322,25 @@ namespace ftl {
                     i->~Type();
 
                 _s.p_end = last.raw_ptr();
-                _s.size  = new_size;
             }
+
+            _s.size = new_size;
+
             return *this;
         }
 
-        auto at(SizeT position)       -> RefType  { return *_s.distanceGet(position); }
-        auto at(SizeT position) const -> CrefType { return *_s.distanceGet(position); }
+        auto at(SizeT position) -> RefType {
+            if(position >= size())
+                throw std::out_of_range("Out of range");
+
+            return *_s.distanceGet(position);
+        }
+        auto at(SizeT position) const -> CrefType {
+            if(position >= size())
+                throw std::out_of_range("Out of range");
+
+            return *_s.distanceGet(position);
+        }
 
         auto push_back(const Type& value) -> Ring& {
             // Realloc if size == max - 1, because of iterator invalidation (begin == end)
@@ -386,7 +397,7 @@ namespace ftl {
          */
         template <typename RedTp, typename Function>
         auto reduce(Function callback, RedTp init) const {
-            return ftl::_iter_reduce(cbegin(), cend(), callback, init);
+            return details::_iter_reduce(cbegin(), cend(), callback, init);
         }
 
         /**
@@ -400,7 +411,7 @@ namespace ftl {
          */
         template <typename Function>
         auto reduce(Function callback) const {
-            return ftl::_iter_reduce(cbegin(), cend(), callback);
+            return details::_iter_reduce(cbegin(), cend(), callback);
         }
         /**
          *
@@ -410,19 +421,18 @@ namespace ftl {
          * @return Vector with mapped values
          */
         template <typename Function>
-        auto map(Function callback) const -> Ring<ttr::return_type_of<Function>> {
+        auto map(Function callback) const -> Ring<return_type_of_t<Function>> {
             static_assert(
-                    ttr::args_count<Function> == 1 ||
-                    ttr::args_count<Function> == 2,
+                    args_count_v<Function> == 1 || args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
-            auto mapped = Ring<ttr::return_type_of<Function>>();
+            auto mapped = Ring<return_type_of_t<Function>>();
             mapped.reserve(size());
 
-            if constexpr (ttr::args_count<Function> == 1) {
+            if constexpr (args_count_v<Function> == 1) {
                 for (auto &item : *this)
                     mapped.emplace_back(callback(item));
-            } else if constexpr (ttr::args_count<Function> == 2) {
+            } else if constexpr (args_count_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : *this)
                     mapped.emplace_back(callback(item, i++));
@@ -439,18 +449,17 @@ namespace ftl {
         template <typename Function>
         auto filter(Function callback) const -> Ring {
             static_assert(
-                    ttr::args_count<Function> == 1 ||
-                    ttr::args_count<Function> == 2,
+                    args_count_v<Function> == 1 || args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
             auto filtered = Ring();
 
-            if constexpr (ttr::args_count<Function> == 1) {
+            if constexpr (args_count_v<Function> == 1) {
                 for (auto& item : *this)
                     if (callback(item))
                         filtered.emplace_back(item);
-            } else if constexpr (ttr::args_count<Function> == 2) {
+            } else if constexpr (args_count_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto& item : *this)
                     if (callback(item, i++))
@@ -469,15 +478,14 @@ namespace ftl {
         template <typename Function>
         auto foreach(Function callback) -> Ring& {
             static_assert(
-                    ttr::args_count<Function> == 1 ||
-                    ttr::args_count<Function> == 2,
+                    args_count_v<Function> == 1 || args_count_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
-            if constexpr (ttr::args_count<Function> == 1) {
+            if constexpr (args_count_v<Function> == 1) {
                 for (auto &item : *this)
                     callback(item);
-            } else if constexpr (ttr::args_count<Function> == 2) {
+            } else if constexpr (args_count_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : *this)
                     callback(item, i++);
@@ -498,31 +506,81 @@ namespace ftl {
             std::sort(begin(), end(), callback);
             return *this;
         }
+        /**
+         * Create string from array with delimiter
+         * @tparam StrT - string type
+         * @param delim - delimiter
+         * @return - new string
+         */
+        template <typename StrT>
+        auto str_fold(const StrT& delim) const {
+            return details::_str_fold<scl::String>(*this, delim);
+        }
+        /**
+         * Create string from array with delimiter
+         * @tparam StrT
+         * @tparam F - type of callback
+         * @param callback - function like auto f(Type item) -> bool
+         * @param delim - delimiter
+         * @return - new string
+         */
+        template <typename StrT, typename F>
+        auto str_fold_if(const StrT& delim, F callback) const {
+            return details::_str_fold_if<scl::String>(*this, delim, callback);
+        }
+        /**
+         * Reverse the Ring
+         * @return reversed Ring
+         */
+        auto reverse() const {
+            auto res = Ring(size());
 
-        auto to_string() const -> ftl::String {
-            auto sstream = std::stringstream();
-            print(sstream);
-            return sstream.str();
+            SizeT i = 0;
+
+            for (auto iter = crbegin(); iter != crend(); ++iter)
+                res[i++] = *iter;
+
+            return res;
+        }
+
+        auto to_string() const {
+            return details::_iter_to_string<scl::String>(cbegin(), cend(), size());
         }
 
         void print(std::ostream& os = std::cout) const {
-            ftl::_iter_print(cbegin(), cend(), size(), os);
+            details::_iter_print(cbegin(), cend(), size(), os);
+        }
+
+        SizeT hash() const {
+            SizeT hash;
+
+            if (_s.isFragmented()) {
+                hash = details::hash(_s.p_start, _s.mem_end - _s.p_start);
+                hash = details::hash(_s.mem, _s.p_end - _s.mem, hash);
+            }
+            else {
+                hash = details::hash(_s.p_start, _s.p_end - _s.p_start);
+            }
+
+            return hash;
         }
 
         // Operators
         friend std::ostream& operator<< (std::ostream& os, const Ring& ring) { ring.print(os); return os; }
 
         auto operator[] (SizeT position) noexcept -> RefType {
-            ASSERT(position < size());
             return *_s.distanceGet(position);
         }
         auto operator[] (SizeT position) const noexcept -> CrefType {
-            ASSERT(position < size());
-            return *_s.distanceGet[position];
+            return *_s.distanceGet(position);
         }
 
         bool operator== (const Ring& r) const {
             return std::equal(r.cbegin(), r.cend(), cbegin());
+        }
+
+        bool operator!= (const Ring& r) const {
+            return !(*this == r);
         }
 
     private:
@@ -554,4 +612,26 @@ namespace ftl {
         ring_impl::Storage<Type> _s;
 
     };
-} // namespace ftl
+} // namespace scl
+
+// fmt format
+template <typename Type>
+struct fmt::formatter<scl::Ring<Type>> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const scl::Ring<Type>& ring, FormatContext& ctx) {
+        return format_to(ctx.out(), "{}", ring.to_string());
+    }
+};
+
+// std hash
+template <typename Type>
+struct std::hash<scl::Ring<Type>> {
+    size_t operator()(const scl::Ring<Type>& ring) const {
+        return ring.hash();
+    }
+};
+
+#undef repeat
