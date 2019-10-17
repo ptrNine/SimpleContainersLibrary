@@ -1,7 +1,7 @@
 #ifndef DECAYENGINE_STRING_HPP
 #define DECAYENGINE_STRING_HPP
 
-#include <utf8.h>
+#include <utf8cpp/utf8.h>
 #include "containers_base.hpp"
 
 namespace scl {
