@@ -64,7 +64,7 @@ configure_file(
 
 install(
         FILES ${SclIncludes}
-        DESTINATION ${SCL_INCLUDE_INSTALL_DIR}
+        DESTINATION ${SCL_INCLUDE_INSTALL_DIR}/scl
 )
 
 if(SCL_BUILD_TESTS)
