@@ -204,7 +204,7 @@ namespace scl {
         // FNV1a32 for 32-bit arch
         template <typename T>
         inline auto hash(T* data, SizeT size, uint32_t hash = 0x811c9dc5)
-        -> std::enable_if_t<sizeof(SizeT) == 4, SizeT>
+        -> std::enable_if_t<sizeof(T*) == 4, SizeT>
         {
             auto ptr = reinterpret_cast<uint8_t*>(data);
             size *= sizeof(T);
@@ -218,7 +218,7 @@ namespace scl {
         // FNV1a64 for 64-bit arch
         template <typename T>
         inline auto hash(T* data, SizeT size, uint64_t hash = 0xcbf29ce484222325)
-        -> std::enable_if_t<sizeof(SizeT) == 8, SizeT>
+        -> std::enable_if_t<sizeof(T*) == 8, SizeT>
         {
             auto ptr = reinterpret_cast<uint8_t*>(data);
             size *= sizeof(T);

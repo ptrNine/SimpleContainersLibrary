@@ -4,8 +4,6 @@ macro(git_submodule_build _project_name)
     set(multiValueArgs CMAKE_ARGS)
     cmake_parse_arguments(${_project_name} "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    project(${_project_name}_download)
-
     message("-- Build submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/remote/${_project_name}")
 
     set(${_project_name}_command

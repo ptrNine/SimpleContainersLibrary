@@ -10,7 +10,7 @@
 #include "string.hpp"
 
 namespace scl {
-    template<typename Type, typename AllocT = std::allocator<Type>>
+    template<typename Type, typename AllocT>
     class Vector {
         using iterator         = typename std::vector<Type, AllocT>::iterator;
         using const_iterator   = typename std::vector<Type, AllocT>::const_iterator;
@@ -45,9 +45,9 @@ namespace scl {
         Vector (Vector&& vector, const allocator_type& allocator) noexcept
             : _stl_vector(std::move(vector._stl_vector), std::cref(allocator)){}
 
-        Vector (const Vector& vector)                 : _stl_vector(std::cref(vector._stl_vector)){}
+        Vector (const Vector& vector): _stl_vector(std::cref(vector._stl_vector)){}
 
-        Vector (Vector&& vector) noexcept             : _stl_vector(std::move(vector._stl_vector)){}
+        Vector (Vector&& vector) noexcept: _stl_vector(std::move(vector._stl_vector)){}
 
         Vector (std::initializer_list<Type> initList, const allocator_type& allocator = allocator_type())
             : _stl_vector(initList, std::cref(allocator)){}

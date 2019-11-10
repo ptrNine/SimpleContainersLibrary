@@ -5,7 +5,7 @@
 #include "containers_base.hpp"
 
 namespace scl {
-    template<typename T, typename AllocT>
+    template<typename T, typename AllocT = std::allocator<T>>
     class Vector;
 
     template <typename CharT, typename TraitsT = std::char_traits<CharT>, typename AllocT = std::allocator<CharT>>
