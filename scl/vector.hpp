@@ -326,7 +326,7 @@ namespace scl {
         }
 
         SizeT hash() const {
-            return std::hash(_stl_vector)();
+            return std::hash<std::vector<Type, AllocT>>()(_stl_vector);
         }
 
         // Operators

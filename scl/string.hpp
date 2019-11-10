@@ -357,7 +357,7 @@ namespace scl {
         }
 
         SizeT hash() const {
-            return std::hash(_std_v)();
+            return std::hash<StdStringT>()(_std_v);
         }
 
         template <typename StrT>
