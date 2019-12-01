@@ -370,7 +370,7 @@ namespace scl {
 
             ++_s.size;
             _incrementEnd();
-            new(_s.p_end - 1) Type(args...);
+            new(_s.p_end - 1) Type(std::move(args)...);
             return *this;
         }
 
@@ -381,7 +381,7 @@ namespace scl {
 
             ++_s.size;
             _decrementStart();
-            new(_s.p_start) Type(args...);
+            new(_s.p_start) Type(std::move(args)...);
             return *this;
         }
 

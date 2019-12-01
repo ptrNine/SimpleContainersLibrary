@@ -109,12 +109,12 @@ namespace scl {
 
         template<typename... Arguments>
         auto emplace_back(Arguments&&... args) {
-            return _stl_vector.emplace_back(args...);
+            return _stl_vector.emplace_back(std::move(args)...);
         }
 
         template<typename... Arguments>
         auto emplace(const_iterator position, Arguments&&... args) -> iterator {
-            return _stl_vector.emplace(args...);
+            return _stl_vector.emplace(position, std::move(args)...);
         }
 
         auto insert(const_iterator position, const Type& value) -> iterator {
