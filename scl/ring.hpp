@@ -423,16 +423,16 @@ namespace scl {
         template <typename Function>
         auto map(Function callback) const -> Ring<return_type_of_t<Function>> {
             static_assert(
-                    args_count_v<Function> == 1 || args_count_v<Function> == 2,
+                    args_count_of_v<Function> == 1 || args_count_of_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
             auto mapped = Ring<return_type_of_t<Function>>();
             mapped.reserve(size());
 
-            if constexpr (args_count_v<Function> == 1) {
+            if constexpr (args_count_of_v<Function> == 1) {
                 for (auto &item : *this)
                     mapped.emplace_back(callback(item));
-            } else if constexpr (args_count_v<Function> == 2) {
+            } else if constexpr (args_count_of_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : *this)
                     mapped.emplace_back(callback(item, i++));
@@ -449,17 +449,17 @@ namespace scl {
         template <typename Function>
         auto filter(Function callback) const -> Ring {
             static_assert(
-                    args_count_v<Function> == 1 || args_count_v<Function> == 2,
+                    args_count_of_v<Function> == 1 || args_count_of_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
             auto filtered = Ring();
 
-            if constexpr (args_count_v<Function> == 1) {
+            if constexpr (args_count_of_v<Function> == 1) {
                 for (auto& item : *this)
                     if (callback(item))
                         filtered.emplace_back(item);
-            } else if constexpr (args_count_v<Function> == 2) {
+            } else if constexpr (args_count_of_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto& item : *this)
                     if (callback(item, i++))
@@ -478,14 +478,14 @@ namespace scl {
         template <typename Function>
         auto foreach(Function callback) -> Ring& {
             static_assert(
-                    args_count_v<Function> == 1 || args_count_v<Function> == 2,
+                    args_count_of_v<Function> == 1 || args_count_of_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
-            if constexpr (args_count_v<Function> == 1) {
+            if constexpr (args_count_of_v<Function> == 1) {
                 for (auto &item : *this)
                     callback(item);
-            } else if constexpr (args_count_v<Function> == 2) {
+            } else if constexpr (args_count_of_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : *this)
                     callback(item, i++);

@@ -1,5 +1,4 @@
-#ifndef DECAYENGINE_CONTAINERS_BASE_HPP
-#define DECAYENGINE_CONTAINERS_BASE_HPP
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -32,21 +31,37 @@ namespace scl {
 
         // Reduce with initial value
         template<typename I, typename F, typename InitT, typename RetT = return_type_of_t<F>>
-        static auto _iter_reduce(I first, I last, F callback, const InitT& init) -> RetT
+        static auto _iter_reduce(I first, I last, F callback, const InitT& init)
+        -> std::enable_if_t<!is_transparent_v<F>, RetT>
         {
-            static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
+            static_assert(args_count_of_v<F> == 2 || args_count_of_v<F> == 3,
                           "Callback has wrong number of arguments");
 
             RetT res = init;
 
-            if constexpr (args_count_v<F> == 2) {
+            if constexpr (args_count_of_v<F> == 2) {
                 for (; first != last; ++first)
                     res = callback(res, *first);
             }
-            else if constexpr (args_count_v<F> == 3) {
+            else if constexpr (args_count_of_v<F> == 3) {
                 for (SizeT i = 0; first != last; ++first)
                     res = callback(res, *first, i++);
             }
+
+            return res;
+        }
+
+        // Reduce with initial value and transparent callback
+        template<typename I, typename F, typename InitT>
+        static auto _iter_reduce(I first, I last, F callback, const InitT& init)
+        -> std::enable_if_t<is_transparent_v<F>, decltype(callback(init, *first))>
+        {
+            using RetT = decltype(callback(init, *first));
+            RetT res = init;
+
+            // Can't deduce args count :(
+            for (; first != last; ++first)
+                res = callback(res, *first);
 
             return res;
         }
@@ -60,11 +75,11 @@ namespace scl {
         // This implementation works if type of element and return type of callback are numbers or if they are same
         template<typename I, typename F, typename RetT = return_type_of_t<F>>
         static auto _iter_reduce(I first, I last, F callback)
-        -> enable_if_t<is_number_or_same_types_t<decltype(*first), RetT>, RetT>
+        -> enable_if_t<!is_transparent_v<F> && is_number_or_same_types_t<decltype(*first), RetT>, RetT>
         {
-            static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
+            static_assert(args_count_of_v<F> == 2 || args_count_of_v<F> == 3,
                           "Callback has wrong number of arguments");
-            static_assert(args_count_v<F> != 3 || !is_number_v<RetT>,
+            static_assert(args_count_of_v<F> != 3 || !is_number_v<RetT>,
                           "Reduce with indices in number-vector should have default value");
 
             if (first == last)
@@ -73,10 +88,10 @@ namespace scl {
             if constexpr (is_number_v<RetT>) {
                 RetT init = *first++;
 
-                if constexpr (args_count_v<F> == 2) {
+                if constexpr (args_count_of_v<F> == 2) {
                     for (; first != last; ++first)
                         init = callback(init, *first);
-                } else if constexpr (args_count_v<F> == 3) {
+                } else if constexpr (args_count_of_v<F> == 3) {
                     for (SizeT i = 1; first != last; ++first)
                         init = callback(init, *first, i++);
                 }
@@ -86,11 +101,11 @@ namespace scl {
             else {
                 RetT init = {};
 
-                if constexpr (args_count_v<F> == 2) {
+                if constexpr (args_count_of_v<F> == 2) {
                     for (; first != last; ++first)
                         init = callback(init, *first);
                 }
-                else if constexpr (args_count_v<F> == 3) {
+                else if constexpr (args_count_of_v<F> == 3) {
                     for (SizeT i = 0; first != last; ++first)
                         init = callback(init, *first, i++);
                 }
@@ -103,21 +118,42 @@ namespace scl {
         // Inverted condition
         template<typename I, typename F, typename RetT = return_type_of_t<F>>
         static auto _iter_reduce(I first, I last, F callback)
-        -> enable_if_t<!is_number_or_same_types_t<decltype(*first), RetT>, RetT>
+        -> enable_if_t<!is_transparent_v<F> && !is_number_or_same_types_t<decltype(*first), RetT>, RetT>
         {
-            static_assert(args_count_v<F> == 2 || args_count_v<F> == 3,
+            static_assert(args_count_of_v<F> == 2 || args_count_of_v<F> == 3,
                           "Callback has wrong number of arguments");
 
-            auto init = return_type_of_t<F>();
+            auto init = RetT();
 
-            if constexpr (args_count_v<F> == 2) {
+            if constexpr (args_count_of_v<F> == 2) {
                 for (; first != last; ++first)
                     init = callback(init, *first);
             }
-            else if constexpr (args_count_v<F> == 3) {
+            else if constexpr (args_count_of_v<F> == 3) {
                 for (SizeT i = 0; first != last; ++first)
                     init = callback(init, *first, i++);
             }
+
+            return init;
+        }
+
+        // Reduce without initial value.
+        // This implementation works for transparent comparators
+        template<typename I, typename F>
+        static auto _iter_reduce(I first, I last, F callback)
+        -> enable_if_t<is_transparent_v<F>, decltype(callback(*first, *first))>
+        {
+            using ValT = std::decay_t<decltype(*first)>;
+            using RetT = decltype(callback(*first, *first));
+
+            if (first == last)
+                return {};
+
+            RetT init = is_number_v<RetT> && is_number_v<ValT> ?
+                    *first++ : RetT();
+
+            for (; first != last; ++first)
+                init = callback(init, *first);
 
             return init;
         }
@@ -170,7 +206,7 @@ namespace scl {
 
         template <typename OutStrT, typename Container, typename StrT, typename F>
         auto _str_fold_if(const Container& c, const StrT& delim, F callback) {
-            static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
+            static_assert(args_count_of_v<F> == 1 || args_count_of_v<F> == 2,
                           "Callback has wrong number of arguments");
 
             auto res = OutStrT();
@@ -180,12 +216,12 @@ namespace scl {
             if (sz == 0)
                 return res;
             else if (sz == 1) {
-                if constexpr (args_count_v<F> == 1)
+                if constexpr (args_count_of_v<F> == 1)
                     return callback(c.front()) ? OutStrT(fmt::to_string(c.front())) : res;
                 else
                     return callback(c.front(), 0) ? OutStrT(fmt::to_string(c.front())) : res;
             } else {
-                if constexpr (args_count_v<F> == 1) {
+                if constexpr (args_count_of_v<F> == 1) {
                     for (SizeT i = 0; i < sz - 1; ++i)
                         if (callback(c[i]))
                             res += fmt::to_string(c[i]) += delim;
@@ -232,7 +268,3 @@ namespace scl {
     } // namespace details
 
 } // namespace scl
-
-
-
-#endif //DECAYENGINE_CONTAINERS_BASE_HPP

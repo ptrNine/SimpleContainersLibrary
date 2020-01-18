@@ -194,17 +194,17 @@ namespace scl {
         template <typename Function>
         auto map(Function callback) const -> Vector<return_type_of_t<Function>> {
             static_assert(
-                    args_count_v<Function> == 1 ||
-                    args_count_v<Function> == 2,
+                    args_count_of_v<Function> == 1 ||
+                    args_count_of_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
             auto mapped = Vector<return_type_of_t<Function>>();
             mapped.reserve(size());
 
-            if constexpr (args_count_v<Function> == 1) {
+            if constexpr (args_count_of_v<Function> == 1) {
                 for (auto &item : _stl_vector)
                     mapped.emplace_back(callback(item));
-            } else if constexpr (args_count_v<Function> == 2) {
+            } else if constexpr (args_count_of_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : _stl_vector)
                     mapped.emplace_back(callback(item, i++));
@@ -221,18 +221,18 @@ namespace scl {
         template <typename Function>
         auto filter(Function callback) const -> Vector {
             static_assert(
-                    args_count_v<Function> == 1 ||
-                    args_count_v<Function> == 2,
+                    args_count_of_v<Function> == 1 ||
+                    args_count_of_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
             auto filtered = Vector();
 
-            if constexpr (args_count_v<Function> == 1) {
+            if constexpr (args_count_of_v<Function> == 1) {
                 for (auto& item : _stl_vector)
                     if (callback(item))
                         filtered.emplace_back(item);
-            } else if constexpr (args_count_v<Function> == 2) {
+            } else if constexpr (args_count_of_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto& item : _stl_vector)
                     if (callback(item, i++))
@@ -251,15 +251,15 @@ namespace scl {
         template <typename Function>
         auto foreach(Function callback) -> Vector& {
             static_assert(
-                    args_count_v<Function> == 1 ||
-                    args_count_v<Function> == 2,
+                    args_count_of_v<Function> == 1 ||
+                    args_count_of_v<Function> == 2,
                     "Callback has wrong number of arguments"
             );
 
-            if constexpr (args_count_v<Function> == 1) {
+            if constexpr (args_count_of_v<Function> == 1) {
                 for (auto &item : _stl_vector)
                     callback(item);
-            } else if constexpr (args_count_v<Function> == 2) {
+            } else if constexpr (args_count_of_v<Function> == 2) {
                 SizeT i = 0;
                 for (auto &item : _stl_vector)
                     callback(item, i++);

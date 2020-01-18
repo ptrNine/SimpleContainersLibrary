@@ -8,63 +8,13 @@
 #include "containers_base.hpp"
 
 namespace scl {
-    template <typename T, SizeT _Size, template<typename, SizeT> class Derived>
-    class ArrayBase {
+    template <typename T, SizeT _Size>
+    class Array : public std::array<T, _Size>{
     public:
         using value_type = T;
-        using ValType = T;
-        using Iter    = typename std::array<T, _Size>::iterator;
-        using CIter   = typename std::array<T, _Size>::const_iterator;
-        using RIter   = typename std::array<T, _Size>::reverse_iterator;
-        using CRIter  = typename std::array<T, _Size>::const_reverse_iterator;
-
-        static constexpr SizeT c_size = _Size;
 
     public:
-
-        // No arguments, noexcept
-        constexpr auto size    () const noexcept -> SizeT    { return _stl_array.size(); }
-        constexpr auto max_size() const noexcept -> SizeT    { return _stl_array.max_size(); }
-        constexpr auto empty   () const noexcept -> bool     { return _stl_array.empty(); }
-        constexpr auto back    () noexcept       -> T&       { return _stl_array.back(); }
-        constexpr auto back    () const noexcept -> const T& { return _stl_array.back(); }
-        constexpr auto front   () noexcept       -> T&       { return _stl_array.front(); }
-        constexpr auto front   () const noexcept -> const T& { return _stl_array.front(); }
-        constexpr auto data    () noexcept       -> T*       { return _stl_array.data(); }
-        constexpr auto data    () const noexcept -> const T* { return _stl_array.data(); }
-
-        // Iterators
-        constexpr auto begin   () noexcept       -> Iter   { return _stl_array.begin(); }
-        constexpr auto end     () noexcept       -> Iter   { return _stl_array.end(); }
-        constexpr auto begin   () const noexcept -> CIter  { return _stl_array.begin(); }
-        constexpr auto end     () const noexcept -> CIter  { return _stl_array.end(); }
-        constexpr auto cbegin  () const noexcept -> CIter  { return _stl_array.cbegin(); }
-        constexpr auto cend    () const noexcept -> CIter  { return _stl_array.cend(); }
-        constexpr auto rbegin  () noexcept       -> RIter  { return _stl_array.rbegin(); }
-        constexpr auto rend    () noexcept       -> RIter  { return _stl_array.rend(); }
-        constexpr auto rbegin  () const noexcept -> CRIter { return _stl_array.rbegin(); }
-        constexpr auto rend    () const noexcept -> CRIter { return _stl_array.rend(); }
-        constexpr auto crbegin () const noexcept -> CRIter { return _stl_array.crbegin(); }
-        constexpr auto crend   () const noexcept -> CRIter { return _stl_array.crend(); }
-
-        constexpr auto at (SizeT position)       -> T&       { return _stl_array.at(position); }
-        constexpr auto at (SizeT position) const -> const T& { return _stl_array.at(position); }
-
-        auto fill (const T& value) -> Derived<T, _Size>& {
-            _stl_array.fill(std::cref(value)); return
-            *static_cast<Derived<T, _Size>*>(this);
-        }
-
-        auto swap (Derived<T, _Size>& array) -> Derived<T, _Size>& {
-            _stl_array.swap(array._stl_array);
-            return *static_cast<Derived<T, _Size>*>(this);
-        }
-
-        // Operators
-        constexpr auto operator[] (SizeT position) noexcept       -> T&       { return _stl_array[position]; }
-        constexpr auto operator[] (SizeT position) const noexcept -> const T& { return _stl_array[position]; }
-
-        friend std::ostream& operator<< (std::ostream& os, const ArrayBase& array) {
+        friend std::ostream& operator<< (std::ostream& os, const Array& array) {
             array.print(os);
             return os;
         }
@@ -81,7 +31,7 @@ namespace scl {
          */
         template <typename RedTp, typename F>
         auto reduce(F callback, RedTp init) const {
-            return details::_iter_reduce(cbegin(), cend(), callback, init);
+            return details::_iter_reduce(this->cbegin(), this->cend(), callback, init);
         }
 
         /**
@@ -95,7 +45,7 @@ namespace scl {
          */
         template <typename F>
         auto reduce(F callback) const {
-            return details::_iter_reduce(cbegin(), cend(), callback);
+            return details::_iter_reduce(this->cbegin(), this->cend(), callback);
         }
         /**
          *
@@ -105,18 +55,18 @@ namespace scl {
          * @return Vector with mapped values
          */
         template <typename F>
-        auto map(F callback) const -> Derived<return_type_of_t<F>, _Size> const {
-            static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
+        auto map(F callback) const -> Array<return_type_of_t<F>, _Size> const {
+            static_assert(args_count_of_v<F> == 1 || args_count_of_v<F> == 2,
                           "Callback has wrong number of arguments");
 
-            auto mapped = Derived<return_type_of_t<F>, _Size>();
+            auto mapped = Array<return_type_of_t<F>, _Size>();
 
-            if constexpr (args_count_v<F> == 1) {
+            if constexpr (args_count_of_v<F> == 1) {
                 for (SizeT i = 0; i < _Size; ++i)
-                    mapped.at(i) = callback(at(i));
-            } else if constexpr (args_count_v<F> == 2) {
+                    mapped.at(i) = callback(this->at(i));
+            } else if constexpr (args_count_of_v<F> == 2) {
                 for (SizeT i = 0; i < _Size; ++i)
-                    mapped.at(i) = callback(at(i), i);
+                    mapped.at(i) = callback(this->at(i), i);
             }
 
             return std::move(mapped);
@@ -129,21 +79,21 @@ namespace scl {
          * @return this Vector
          */
         template <typename F>
-        auto foreach(F callback) -> Derived<T, _Size>& {
+        auto foreach(F callback) -> Array<T, _Size>& {
             static_assert(is_same_v<return_type_of_t<F>, void>, "Foreach callback can't return value!");
-            static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
+            static_assert(args_count_of_v<F> == 1 || args_count_of_v<F> == 2,
                           "Callback has wrong number of arguments");
 
-            if constexpr (args_count_v<F> == 1) {
-                for (auto &item : _stl_array)
+            if constexpr (args_count_of_v<F> == 1) {
+                for (auto &item : *this)
                     callback(item);
-            } else if constexpr (args_count_v<F> == 2) {
+            } else if constexpr (args_count_of_v<F> == 2) {
                 SizeT i = 0;
-                for (auto &item : _stl_array)
+                for (auto &item : *this)
                     callback(item, i++);
             }
 
-            return *static_cast<Derived<T, _Size>*>(this);
+            return *this;
         }
         /**
          * Create string from array with delimiter
@@ -158,11 +108,11 @@ namespace scl {
             if constexpr (_Size == 0)
                 return res;
             else if constexpr (_Size == 1)
-                return res = fmt::to_string(front());
+                return res = fmt::to_string(this->front());
             else {
                 for (SizeT i = 0; i < _Size - 1; ++i)
-                    res += fmt::to_string(at(i)) += delim;
-                return res += fmt::to_string(back());
+                    res += fmt::to_string(this->at(i)) += delim;
+                return res += fmt::to_string(this->back());
             }
         }
         /**
@@ -175,7 +125,7 @@ namespace scl {
          */
         template <typename StrT, typename F>
         auto str_fold_if(const StrT& delim, F callback) const {
-            static_assert(args_count_v<F> == 1 || args_count_v<F> == 2,
+            static_assert(args_count_of_v<F> == 1 || args_count_of_v<F> == 2,
                           "Callback has wrong number of arguments");
 
             auto res = scl::StringBase<Char8, std::char_traits<Char8>, std::allocator<Char8>>();
@@ -184,22 +134,22 @@ namespace scl {
             if constexpr (_Size == 0)
                 return res;
             else if constexpr (_Size == 1) {
-                if constexpr (args_count_v<F> == 1)
-                    return callback(front()) ? fmt::to_string(front()) : res;
+                if constexpr (args_count_of_v<F> == 1)
+                    return callback(this->front()) ? fmt::to_string(this->front()) : res;
                 else
-                    return callback(front(), 0) ? fmt::to_string(front()) : res;
+                    return callback(this->front(), 0) ? fmt::to_string(this->front()) : res;
             } else {
-                if constexpr (args_count_v<F> == 1) {
+                if constexpr (args_count_of_v<F> == 1) {
                     for (SizeT i = 0; i < _Size - 1; ++i)
-                        if (callback(at(i)))
-                            res += fmt::to_string(at(i)) += delim;
-                    return callback(back()) ? res += fmt::to_string(back()) : (res.empty() ? res : res.pop_back());
+                        if (callback(this->at(i)))
+                            res += fmt::to_string(this->at(i)) += delim;
+                    return callback(this->back()) ? res += fmt::to_string(this->back()) : (res.empty() ? res : res.pop_back());
                 }
                 else {
                     for (SizeT i = 0; i < _Size - 1; ++i)
-                        if (callback(at(i), i))
-                            res += fmt::to_string(at(i)) += delim;
-                    return callback(back(), _Size - 1) ? res += fmt::to_string(back())
+                        if (callback(this->at(i), i))
+                            res += fmt::to_string(this->at(i)) += delim;
+                    return callback(this->back(), _Size - 1) ? res += fmt::to_string(this->back())
                                                        : (res.empty() ? res : res.pop_back());
                 }
             }
@@ -213,9 +163,9 @@ namespace scl {
          * @return this Array
          */
         template <typename F>
-        auto sort(F callback) -> Derived<T, _Size>& {
-            std::sort(_stl_array.begin(), _stl_array.end(), callback);
-            return *static_cast<Derived<T, _Size>*>(this);
+        auto sort(F callback) -> Array<T, _Size>& {
+            std::sort(this->begin(), this->end(), callback);
+            return *this;
         }
 
         /**
@@ -223,10 +173,10 @@ namespace scl {
          * @return reversed Array
          */
         auto reverse() const {
-            auto res = Derived<T, _Size>();
+            auto res = Array<T, _Size>();
             SizeT i = 0;
 
-            for (auto iter = crbegin(); iter != crend(); ++iter)
+            for (auto iter = this->crbegin(); iter != this->crend(); ++iter)
                 res[i++] = *iter;
 
             return res;
@@ -234,66 +184,66 @@ namespace scl {
 
         auto to_string() const {
             using StrT = scl::StringBase<Char8, std::char_traits<Char8>, std::allocator<Char8>>;
-            return details::_iter_to_string<StrT>(cbegin(), cend(), _Size);
+            return details::_iter_to_string<StrT>(this->cbegin(), this->cend(), _Size);
         }
 
         void print(std::ostream& os = std::cout) const {
-            details::_iter_print(cbegin(), cend(),_Size, os);
+            details::_iter_print(this->cbegin(), this->cend(),_Size, os);
         }
 
         SizeT hash() const {
-            return std::hash<std::array<T, _Size>>()(_stl_array);
+            return std::hash<std::array<T, _Size>>()(*this);
         }
 
     public:
         // Operators
 
-        auto operator==(const Derived<T, _Size>& arr) const -> bool {
-            return std::equal(begin(), end(), arr.begin());
+        auto operator==(const Array<T, _Size>& arr) const -> bool {
+            return std::equal(this->begin(), this->end(), arr.begin());
         }
-        auto operator!=(const Derived<T, _Size>& arr) const -> bool {
+        auto operator!=(const Array<T, _Size>& arr) const -> bool {
             return !(*this == arr);
         }
-        auto operator<(const Derived<T, _Size>& arr) const -> bool {
-            return std::lexicographical_compare(begin(), end(), arr.begin(), arr.end());
+        auto operator<(const Array<T, _Size>& arr) const -> bool {
+            return std::lexicographical_compare(this->begin(), this->end(), arr.begin(), arr.end());
         }
-        auto operator>(const Derived<T, _Size>& arr) const -> bool {
+        auto operator>(const Array<T, _Size>& arr) const -> bool {
             return *this < arr;
         }
-        auto operator>=(const Derived<T, _Size>& arr) const -> bool {
+        auto operator>=(const Array<T, _Size>& arr) const -> bool {
             return !(*this < arr);
         }
-        auto operator<=(const Derived<T, _Size>& arr) const -> bool {
+        auto operator<=(const Array<T, _Size>& arr) const -> bool {
             return !(*this > arr);
         }
 
         template <SizeT _size>
-        auto operator+ (const Derived<T, _size>& arr) const {
-            auto res = Derived<T, _Size + _size>();
+        auto operator+ (const Array<T, _size>& arr) const {
+            auto res = Array<T, _Size + _size>();
+            SizeT j = 0;
 
-            auto a =std::array{23, 5, 6};
+            for (SizeT i = 0; i < _Size; ++i, ++j)
+                res[j] = (*this)[i];
+
+            for (SizeT i = 0; i < _size; ++i, ++j)
+                res[j] = arr[i];
+
+            return res;
         }
 
         template<SizeT _pos>
-        friend constexpr auto get(Derived<T, _Size>& array) noexcept -> T& {
-            return std::get<_pos>(array._stl_array);
+        friend constexpr auto get(Array<T, _Size>& array) noexcept -> T& {
+            return std::get<_pos>(static_cast<std::array<T, _Size>&>(array));
         }
         template<SizeT _pos>
-        friend constexpr auto get(const Derived<T, _Size>& array) noexcept -> const T& {
-            return std::get<_pos>(array._stl_array);
+        friend constexpr auto get(const Array<T, _Size>& array) noexcept -> const T& {
+            return std::get<_pos>(static_cast<const std::array<T, _Size>&>(array));
         }
         template<SizeT _pos>
-        friend constexpr auto get(Derived<T, _Size>&& array) noexcept -> T&& {
-            return std::move(std::get<_pos>(array._stl_array));
+        friend constexpr auto get(Array<T, _Size>&& array) noexcept -> T&& {
+            return std::move(std::get<_pos>(static_cast<std::array<T, _Size>&&>(array)));
         }
-
-    public:
-        std::array<T, _Size> _stl_array;
     };
-
-
-    template <typename T, SizeT _Size>
-    class Array : public ArrayBase<T, _Size, Array> {};
 
 
     template<typename Type, typename... ValType>

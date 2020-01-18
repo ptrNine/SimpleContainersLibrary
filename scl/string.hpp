@@ -46,6 +46,7 @@ namespace scl {
         template<typename InputIterator>
         StringBase(InputIterator beg, InputIterator end) : _std_v(beg, end) {}
 
+        StringBase(const CharT* str) : _std_v(str) {}
         template <std::size_t _Size>
         StringBase(const CharT(&str)[_Size]) : _std_v(str, _Size ? _Size-1 : 0) {}
         StringBase(const CharT* str, SizeT size) : _std_v(str, size) {}
@@ -565,5 +566,26 @@ struct std::hash<scl::StringBase<CharT>> {
         return str.hash();
     }
 };
+
+namespace scl {
+    template <typename T>
+    static inline constexpr bool is_any_string_v =
+            is_c_string_v<T> ||
+            is_specialization_of_v<T, scl::StringBase> ||
+            is_specialization_of_v<T, std::basic_string> ||
+            is_specialization_of_v<T, std::basic_string_view> ||
+            is_same_v<char*, T> || is_same_v<const char*, T> ||
+            is_same_v<char16_t*, const T> || is_same_v<const char16_t*, const T> ||
+            is_same_v<char32_t*, const T> || is_same_v<const char32_t*, const T>;
+
+    template <typename T1, typename T2>
+    int strcmp_any(T1&& str1, T2&& str2) {
+        using CharT1 = std::decay_t<decltype(str1[0])>;
+        using CharT2 = std::decay_t<decltype(str2[0])>;
+
+        return strcmp(scl::StringBase<CharT1>(std::forward<T1>(str1)).to_utf8().data(),
+                      scl::StringBase<CharT2>(std::forward<T2>(str2)).to_utf8().data());
+    }
+}
 
 #endif //DECAYENGINE_STRING_HPP
