@@ -14,15 +14,17 @@ namespace scl {
                       "String must contains char symbols only");
 
     public:
-        using value_type = CharT;
-        using CharType = CharT;
-        using SizeType = typename std::basic_string<CharT, TraitsT, AllocT>::size_type;
-        using IterT    = typename std::basic_string<CharT, TraitsT, AllocT>::iterator;
-        using C_IterT  = typename std::basic_string<CharT, TraitsT, AllocT>::const_iterator;
-        using R_IterT  = typename std::basic_string<CharT, TraitsT, AllocT>::const_iterator;
-        using CR_IterT = typename std::basic_string<CharT, TraitsT, AllocT>::const_reverse_iterator;
-        using StrView  = std::basic_string_view<CharT, TraitsT>;
         using StdStringT = std::basic_string<CharT, TraitsT, AllocT>;
+        using value_type  = CharT;
+        using traits_type = TraitsT;
+        using CharType    = CharT;
+        using allocator_type = typename StdStringT::allocator_type;
+        using SizeType = typename StdStringT::size_type;
+        using IterT    = typename StdStringT::iterator;
+        using C_IterT  = typename StdStringT::const_iterator;
+        using R_IterT  = typename StdStringT::const_iterator;
+        using CR_IterT = typename StdStringT::const_reverse_iterator;
+        using StrView  = std::basic_string_view<CharT, TraitsT>;
 
     public:
         static constexpr auto npos = std::basic_string<CharT, TraitsT, AllocT>::npos;
@@ -569,7 +571,7 @@ struct std::hash<scl::StringBase<CharT>> {
 
 namespace scl {
     template <typename T>
-    static inline constexpr bool is_any_string_v =
+    inline constexpr bool is_any_string_v =
             is_c_string_v<T> ||
             is_specialization_of_v<T, scl::StringBase> ||
             is_specialization_of_v<T, std::basic_string> ||
@@ -583,8 +585,8 @@ namespace scl {
         using CharT1 = std::decay_t<decltype(str1[0])>;
         using CharT2 = std::decay_t<decltype(str2[0])>;
 
-        return strcmp(scl::StringBase<CharT1>(std::forward<T1>(str1)).to_utf8().data(),
-                      scl::StringBase<CharT2>(std::forward<T2>(str2)).to_utf8().data());
+        return scl::StringBase<CharT1>(std::forward<T1>(str1)).to_utf8().compare(
+               scl::StringBase<CharT2>(std::forward<T2>(str2)).to_utf8().data());
     }
 }
 

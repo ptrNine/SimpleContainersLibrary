@@ -45,7 +45,7 @@ namespace scl {
 
         template <typename ReturnT, bool _IsMutable, FunctionType _Type, typename... ArgsT>
         struct _function {
-            using its_a_function = void;
+            SIC bool value = true;
 
             SIC size_t       arity          = sizeof...(ArgsT);
             SIC bool         is_mutable     = _IsMutable;
@@ -94,7 +94,7 @@ namespace scl {
 
         template <typename F>
         struct transparent_comparator {
-            using its_a_function = void;
+            SIC bool value = true;
 
             SIC size_t arity = transparent_args_counter<F>::value;
             // Consider that comparator's operator() is not mutable
@@ -112,28 +112,39 @@ namespace scl {
 
 
         // Function traits
+        template <typename T, typename = void>
+        struct _function_traits {
+            SIC bool value = false;
+        };
+
         template <typename FunctorT>
-        struct _function_traits : public _function_traits<decltype(&FunctorT::operator())> {};
+        struct _function_traits<FunctorT, typename Void<decltype(&FunctorT::operator())>::type>
+                : public _function_traits<decltype(&FunctorT::operator())> {};
 
         template <typename FunctorT, typename ReturnT, typename... ArgsT>
-        struct _function_traits<ReturnT(FunctorT::*)(ArgsT...)> : public _function<ReturnT, true, FunctionType::member, ArgsT...> {};
+        struct _function_traits<ReturnT(FunctorT::*)(ArgsT...)>
+                : public _function<ReturnT, true, FunctionType::member, ArgsT...> {};
 
         template <typename FunctorT, typename ReturnT, typename... ArgsT>
-        struct _function_traits<ReturnT(FunctorT::*)(ArgsT...) const> : public _function<ReturnT, false, FunctionType::member, ArgsT...> {};
+        struct _function_traits<ReturnT(FunctorT::*)(ArgsT...) const>
+                : public _function<ReturnT, false, FunctionType::member, ArgsT...> {};
 
 
         template <typename ReturnT, typename... ArgsT>
-        struct _function_traits<ReturnT(ArgsT...)> : public _function<ReturnT, false, FunctionType::function, ArgsT...> {};
+        struct _function_traits<ReturnT(ArgsT...)>
+                : public _function<ReturnT, false, FunctionType::function, ArgsT...> {};
 
         template <typename ReturnT, typename... ArgsT>
-        struct _function_traits<ReturnT(*)(ArgsT...)> : public _function_traits<ReturnT(ArgsT...)> {};
+        struct _function_traits<ReturnT(*)(ArgsT...)>
+                : public _function_traits<ReturnT(ArgsT...)> {};
 
 
         template <typename FunctionT, typename Enable = void>
         struct function : public _function_traits<FunctionT> {};
 
         template <typename FunctionT>
-        struct function<FunctionT, std::enable_if_t<is_transparent_v<FunctionT>>> : transparent_comparator<FunctionT> {};
+        struct function<FunctionT, std::enable_if_t<is_transparent_v<FunctionT>>>
+                : transparent_comparator<FunctionT> {};
     }
 
 
@@ -168,15 +179,7 @@ namespace scl {
 
 
     template <typename T, typename U = void>
-    struct is_function {
-        SIC bool value = false;
-    };
-
-    template <typename T>
-    struct is_function<T, details::function<T>> {
-        SIC bool value = true;
-    };
-
+    struct is_function : public details::function<T> {};
 
     ////////////////////////////// Safe function traits //////////////////////////////
 
@@ -239,6 +242,11 @@ namespace scl {
 
     template <typename T, size_t _Size>
     struct is_c_string<const T(&)[_Size]> {
+        SIC bool value = is_same_v<char, T> || is_same_v<char16_t, T> || is_same_v<char32_t, T>;
+    };
+
+    template <typename T, size_t _Size>
+    struct is_c_string<T[_Size]> {
         SIC bool value = is_same_v<char, T> || is_same_v<char16_t, T> || is_same_v<char32_t, T>;
     };
 
