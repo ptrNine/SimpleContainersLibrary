@@ -393,7 +393,7 @@ namespace scl {
 
             {
                 PtrDiff pos = -str.length();
-                while ((pos = data.find(str, pos + str.length())) != StrView::npos)
+                while ((pos = data.find(str, pos + str.length())) != PtrDiff(StrView::npos))
                     idxs.push_back(static_cast<SizeType>(pos));
             }
 

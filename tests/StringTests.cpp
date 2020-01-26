@@ -9,9 +9,6 @@ TEST_CASE("String") {
         String str1("string");
         String str3(std::string_view("string"));
 
-        auto cstr1 = str1.c_str();
-        auto cstr3 = str3.c_str();
-
         auto size1 = str1.length();
         auto size3 = str3.length();
 
@@ -344,9 +341,6 @@ TEST_CASE("String16") {
 
     String str1(u"string");
     String str3(std::basic_string_view(u"string"));
-
-    auto cstr1 = str1.c_str();
-    auto cstr3 = str3.c_str();
 
     auto size1 = str1.length();
     auto size3 = str3.length();

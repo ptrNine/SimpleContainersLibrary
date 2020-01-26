@@ -15,7 +15,7 @@ namespace scl {
             bool isFragmented() const { return p_start >= p_end; }
 
             PtrT distanceGet(SizeT pos) const noexcept {
-                auto diff = mem_end - p_start;
+                auto diff = SizeT(mem_end - p_start);
 
                 if (isFragmented() && diff <= pos) {
                     pos -= diff;
@@ -186,7 +186,7 @@ namespace scl {
             auto start_mv = ring._s.p_start - ring._s.mem;
             auto end_mv   = ring._s.p_end   - ring._s.mem;
 
-            std::memcpy(_s.mem, ring._s.mem, _s.max);
+            std::memcpy((void*)_s.mem, (const void*)(ring._s.mem), _s.max);
 
             _s.p_start = _s.mem + start_mv;
             _s.p_end   = _s.mem + end_mv;
@@ -290,10 +290,10 @@ namespace scl {
 
                     if (_s.isFragmented()) {
                         auto displ = (_s.mem_end - _s.p_start);
-                        std::memcpy(newblock, _s.p_start, displ * sizeof(Type));
-                        std::memcpy(newblock + displ, _s.mem, (_s.size - displ) * sizeof(Type));
+                        std::memcpy((void*)newblock, (const void*)(_s.p_start), displ * sizeof(Type));
+                        std::memcpy((void*)newblock + displ, (const void*)(_s.mem), (_s.size - displ) * sizeof(Type));
                     } else
-                        std::memcpy(newblock, _s.p_start, (_s.p_end - _s.p_start) * sizeof(Type));
+                        std::memcpy((void*)newblock, (const void*)(_s.p_start), (_s.p_end - _s.p_start) * sizeof(Type));
 
                     _allocator.deallocate(_s.mem, 0);
 
