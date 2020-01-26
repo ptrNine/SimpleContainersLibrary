@@ -267,10 +267,19 @@ namespace scl {
         template <SizeType _Size>
         inline auto operator!=(const CharT(&str)[_Size]) const { return _std_v != str; }
 
+        template <SizeType _Size>
+        friend inline auto operator==(const CharT(&str)[_Size], const StringBase& str2) { return str2 == str; }
+        template <SizeType _Size>
+        friend inline auto operator!=(const CharT(&str)[_Size], const StringBase& str2) { return str2 != str; }
+
+
         inline auto operator+(const StringBase& str) const    { return StringBase(_std_v + str._std_v); }
         inline auto operator+(CharT c) const                  { return StringBase(_std_v + c); }
         template <SizeType _Size>
         inline auto operator+(const CharT(&str)[_Size]) const { return StringBase(_std_v + str); }
+        template <SizeType _Size>
+        friend inline auto operator+(const CharT(&str)[_Size], const StringBase& str2) { return StringBase(str) + str2; }
+
         inline auto operator+=(const StringBase& str) -> StringBase& { _std_v += str._std_v; return *this; }
         inline auto operator+=(CharT c) -> StringBase&               { _std_v += c; return *this; }
         template <SizeType _Size>
@@ -303,6 +312,9 @@ namespace scl {
                     return StringBase(*this + '/' + str);
             }
         }
+
+        template <SizeType _Size>
+        friend inline auto operator/(const CharT(&str)[_Size], const StringBase& str2) { return StringBase(str) / str2; }
 
         inline auto operator/=(const StringBase& str) -> StringBase&
         {

@@ -291,7 +291,7 @@ namespace scl {
                     if (_s.isFragmented()) {
                         auto displ = (_s.mem_end - _s.p_start);
                         std::memcpy((void*)newblock, (const void*)(_s.p_start), displ * sizeof(Type));
-                        std::memcpy((void*)newblock + displ, (const void*)(_s.mem), (_s.size - displ) * sizeof(Type));
+                        std::memcpy((void*)(newblock + displ), (const void*)(_s.mem), (_s.size - displ) * sizeof(Type));
                     } else
                         std::memcpy((void*)newblock, (const void*)(_s.p_start), (_s.p_end - _s.p_start) * sizeof(Type));
 
