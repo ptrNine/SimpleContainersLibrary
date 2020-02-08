@@ -41,7 +41,7 @@ namespace scl {
         StringBase(std::basic_string<CharT, TraitsT, AllocT>&& str) : _std_v(std::move(str)) {}
         StringBase(std::basic_string_view<CharT, TraitsT>&& str) : _std_v(std::move(str)) {}
 
-        StringBase(SizeType n, CharT c)            : _std_v(c, n) {}
+        StringBase(SizeType n, CharT c)            : _std_v(n, c) {}
         StringBase(std::initializer_list<CharT> l) : _std_v(l) {}
         StringBase(StringBase&& str) noexcept      : _std_v(std::move(str._std_v)) {}
 
@@ -397,6 +397,9 @@ namespace scl {
 
         template <typename StrT>
         auto split(const StrView& str) const {
+            if (str.empty())
+                return Vector<StrT, std::allocator<StrT>>({*this});
+
             Vector<SizeType, std::allocator<SizeType>> idxs;
             idxs.reserve(128);
 
@@ -425,6 +428,9 @@ namespace scl {
 
         template <typename StrT>
         auto split(std::initializer_list<CharT> l, bool createNullStrs = false) const {
+            if (l.size() == 0)
+                return Vector<StrT, std::allocator<StrT>>({*this});
+
             Vector<StrT, std::allocator<StrT>> vec;
             StrView data = _std_v;
             SizeType start = 0;
