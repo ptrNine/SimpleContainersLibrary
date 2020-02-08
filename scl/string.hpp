@@ -450,7 +450,7 @@ namespace scl {
         }
 
         template <typename T, typename ... Ts>
-        auto split_str(T&& arg, Ts&& ... args) {
+        auto split_str(T&& arg, Ts&& ... args) const {
             return split<StringBase>(arg, args...);
         }
 
@@ -459,7 +459,7 @@ namespace scl {
         }
 
         template <typename T, typename ... Ts>
-        auto split_view(T&& arg, Ts&& ... args) {
+        auto split_view(T&& arg, Ts&& ... args) const {
             return split<std::basic_string_view<CharT, TraitsT>>(arg, args...);
         }
 
