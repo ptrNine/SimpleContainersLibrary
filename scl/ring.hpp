@@ -237,8 +237,8 @@ namespace scl {
         auto crend  () const -> CRIterT { return CRIterT(&_s, _s.p_start - 1); }
 
         // Base functions
-        auto back         ()                -> RefType  { return *(_s.p_end - 1); }
-        auto back         () const          -> CrefType { return *(_s.p_end - 1); }
+        auto back         ()                -> RefType  { return (*this)[size() - 1]; }
+        auto back         () const          -> CrefType { return (*this)[size() - 1]; }
         auto front        () noexcept       -> RefType  { return *_s.p_start; }
         auto front        () const noexcept -> CrefType { return *_s.p_start; }
         auto empty        () const noexcept -> bool     { return _s.size == 0; }
